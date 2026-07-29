@@ -21,5 +21,8 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        // создать продукты
+        $this->call(ProductSeeder::class, ['count' => 10]);
     }
 }

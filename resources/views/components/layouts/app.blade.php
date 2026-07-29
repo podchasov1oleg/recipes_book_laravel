@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>{{ $title ?? config('app.name') }}</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @stack('styles')
@@ -10,18 +10,30 @@
     <body>
         <header class="shadow-md">
             <nav class="container mx-auto flex justify-center py-3">
-                <ul class="flex flex-wrap list-none pl-0 mb-0">
+                <ul class="flex items-center list-none pl-0 mb-0">
                     <li>
-                        <a href="#" class="block py-2 px-3 text-base text-white decoration-0 bg-blue-500 rounded-md">Главная</a>
+                        <a
+                            href="/"
+                            @class([
+                                'btn-primary' => request()->routeIs('home'),
+                                'menu-link' => !request()->routeIs('home'),
+                            ])
+                        >Главная</a>
                     </li>
                     <li>
-                        <a href="#" class="block py-2 px-3 text-base decoration-0 text-blue-600 hover:text-blue-500 transition-colors">Продукты</a>
+                        <a
+                            href="{{ route('products.index') }}"
+                            @class([
+                                'btn-primary' => request()->routeIs('products.*'),
+                                'menu-link' => !request()->routeIs('products.*'),
+                            ])
+                        >Продукты</a>
                     </li>
                     <li>
-                        <a href="#" class="block py-2 px-3 text-base decoration-0 text-blue-600 hover:text-blue-500 transition-colors">Рецепты</a>
+                        <a href="#" class="menu-link">Рецепты</a>
                     </li>
                     <li>
-                        <a href="#" class="block py-2 px-3 text-base decoration-0 text-blue-600 hover:text-blue-500 transition-colors">Меню на неделю</a>
+                        <a href="#" class="menu-link">Меню на неделю</a>
                     </li>
                 </ul>
             </nav>

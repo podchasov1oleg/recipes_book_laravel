@@ -30,7 +30,13 @@
                         >Продукты</a>
                     </li>
                     <li>
-                        <a href="#" class="menu-link">Рецепты</a>
+                        <a
+                            href="{{route('recipes.index')}}"
+                            @class([
+                                'btn-primary' => request()->routeIs('recipes.*'),
+                                'menu-link' => !request()->routeIs('recipes.*'),
+                            ])
+                        >Рецепты</a>
                     </li>
                     <li>
                         <a href="#" class="menu-link">Меню на неделю</a>

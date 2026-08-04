@@ -5,7 +5,7 @@
 
     <h1 class="h1">Изменить продукт</h1>
 
-    <form class="" action="{{route('products.update', $product)}}" method="POST">
+    <form action="{{route('products.update', $product)}}" method="POST">
         @csrf
         @method('PUT')
         <div>

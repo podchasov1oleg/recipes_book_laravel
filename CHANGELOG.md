@@ -15,3 +15,14 @@
 - Фича-тесты на CRUD продуктов (`tests/Feature/ProductTest.php`).
 - Сидер тестовых продуктов (`ProductSeeder`).
 - Русский перевод стандартных сообщений валидации Laravel (`lang/ru`).
+- CRUD рецептов: контроллер, модель, миграции (включая pivot-таблицу
+  `product_recipe` с `cascadeOnDelete`), форм-реквесты с валидацией
+  `product_ids` (`exists`, `min:1`), политика `RecipePolicy`.
+- Blade-шаблоны списка, создания и редактирования рецепта; пункт
+  «Рецепты» в навигации.
+- Мультиселект продуктов для формы рецепта на базе Tom Select
+  (отдельная точка входа в Vite, стили в `resources/css/tom-select.css`).
+- Склонение количества ингредиентов ("N ингредиент/ингредиента/
+  ингредиентов") через `trans_choice` и `lang/ru/recipes.php`.
+- Сидер тестовых рецептов (`RecipeSeeder`).
+- Фича-тесты на CRUD рецептов (`tests/Feature/RecipeTest.php`).

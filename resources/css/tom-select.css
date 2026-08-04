@@ -1,0 +1,79 @@
+@layer components {
+    /* ts-wrapper - обертка */
+    .ts-wrapper {
+        &.input-active {
+            .ts-control {
+                @apply border-blue-400 outline-none ring-2 ring-blue-200;
+            }
+
+            &.is-invalid .ts-control {
+                @apply ring-red-200;
+            }
+        }
+
+
+
+        &.plugin-remove_button .item {
+            @apply inline-flex items-center;
+
+            .remove {
+                @apply pl-2;
+            }
+        }
+
+        &.multi {
+            .ts-control > div {
+                @apply cursor-pointer mr-2 my-1 py-1 px-2 bg-indigo-50 text-blue-800 border border-indigo-200 overflow-auto;
+            }
+        }
+
+        &.is-invalid .ts-control {
+            @apply border-red-400;
+        }
+    }
+
+    /* ts-control - инпут */
+    .ts-control {
+        @apply flex border rounded-md transition-colors duration-150 border-gray-400 py-1 px-2;
+
+        & > input {
+            @apply flex-auto p-0 min-h-0 m-0 border-none outline-none;
+        }
+    }
+
+    /* ts-dropdown - обертка над dropdown */
+    .ts-dropdown {
+        @apply mt-2 h-auto p-0 z-50 border border-gray-400 rounded-lg shadow-lg;
+
+        .active {
+            @apply bg-slate-50 ;
+        }
+    }
+
+    /* listbox - список опций */
+    .ts-dropdown-content {
+        /*@apply py-2;*/
+    }
+
+    .option {
+        @apply px-3 py-2 opacity-100 cursor-pointer text-gray-700 leading-tight;
+
+        &:last-child {
+            @apply rounded-b-md;
+        }
+
+        &:first-child {
+            @apply rounded-t-md;
+        }
+    }
+
+    /* item - выбранная опция в инпуте */
+    .item {
+        @apply rounded-2xl inline-block;
+    }
+
+    /* ts-hidden-accessible - сокрытый оригинальный инпут */
+    .ts-hidden-accessible {
+        display: none;
+    }
+}

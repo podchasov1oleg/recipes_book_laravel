@@ -31,4 +31,14 @@ class Recipe extends Model
     {
         return $this->belongsToMany(Product::class);
     }
+
+    /**
+     * Получить дни меню, к которым привязаны рецепты
+     *
+     * @return BelongsToMany
+     */
+    public function menuDays(): BelongsToMany
+    {
+        return $this->belongsToMany(MenuDay::class);
+    }
 }

@@ -27,5 +27,8 @@ class DatabaseSeeder extends Seeder
 
         // создать рецепты
         $this->call(RecipeSeeder::class, ['count' => 10]);
+
+        // создать меню на неделю
+        $this->call(MenuDaySeeder::class, ['count' => 10]);
     }
 }

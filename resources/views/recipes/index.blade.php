@@ -18,7 +18,7 @@
     @if($recipes->count())
         <div class="grid grid-cols-2 gap-2">
             @foreach($recipes as $recipe)
-                <div class="border border-gray-200 rounded-lg flex flex-col p-3">
+                <div class="border border-gray-200 rounded-lg flex flex-col p-3 bg-white">
                     <p class="text-lg font-bold text-black mb-2">{{$recipe->title}}</p>
                     <p class="text-slate-400 text-sm mb-2">
                         {{trans_choice('recipes.products_count', $recipe->products_count)}}

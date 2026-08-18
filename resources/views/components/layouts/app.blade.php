@@ -1,3 +1,8 @@
+@props([
+    'maxWidth' => 'max-w-2xl',
+    'bgColor' => null,
+])
+
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -7,8 +12,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @stack('styles')
     </head>
-    <body>
-        <header class="shadow-md">
+    <body class="bg-gray-100">
+        <header class="shadow-md bg-white">
             <nav class="container mx-auto flex justify-center py-3">
                 <ul class="flex items-center list-none pl-0 mb-0">
                     <li>
@@ -39,13 +44,28 @@
                         >Рецепты</a>
                     </li>
                     <li>
-                        <a href="#" class="menu-link">Меню на неделю</a>
+                        <a
+                            href="{{route('week-menu')}}"
+                            @class([
+                                'btn-primary' => request()->routeIs('week-menu'),
+                                'menu-link' => !request()->routeIs('week-menu'),
+                            ])
+                        >Меню на неделю</a>
                     </li>
                 </ul>
             </nav>
         </header>
 
-        <main class="container mx-auto max-w-2xl px-4 py-8">
+        <main
+            {{$attributes->class([
+                'container',
+                'mx-auto',
+                'px-4',
+                'py-8',
+                $maxWidth,
+                $bgColor,
+            ])}}
+        >
             {{ $slot }}
         </main>
 

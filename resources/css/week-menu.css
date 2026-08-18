@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+.recipes-select .ts-control .item {
+    @apply hidden;
+}
+
+@layer components {
+    .week-day {
+        @apply border border-gray-300 rounded-lg bg-white flex flex-col relative;
+    }
+
+    .week-day-header {
+        @apply flex flex-col border-b border-b-gray-300 p-2;
+    }
+
+    .week-day-empty {
+        @apply text-xs text-gray-500 text-center h-full flex items-center justify-center;
+    }
+
+    .week-recipe {
+        @apply bg-gray-100 border border-gray-300 rounded-md p-2 grid grid-cols-[1fr_auto] items-start;
+    }
+
+    .plugin-checkbox_options:not(.rtl) {
+        .option input {
+            @apply mr-2;
+        }
+    }
+
+    .ts-dropdown {
+        @apply border-0 bg-white shadow-none;
+
+        .active {
+            @apply bg-gray-100;
+        }
+    }
+
+    .option {
+        @apply rounded-md;
+    }
+
+    .recipe-popup {
+        @apply absolute z-10 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 top-full left-0 mt-2;
+    }
+}

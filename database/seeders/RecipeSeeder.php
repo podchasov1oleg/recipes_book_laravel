@@ -13,9 +13,10 @@ class RecipeSeeder extends Seeder
      */
     public function run(): void
     {
-         Recipe::factory()
-             ->hasAttached(Product::inRandomOrder()->take(3)->get())
-             ->count(10)
-             ->create();
+        for ($i = 0; $i < 10; $i++) {
+            Recipe::factory()
+                ->hasAttached(Product::inRandomOrder()->take(rand(1, 5))->get())
+                ->create();
+        }
     }
 }

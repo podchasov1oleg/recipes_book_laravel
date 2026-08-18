@@ -9,6 +9,8 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/recipes/create.js',
+                'resources/js/week-menu/index.js',
+                'resources/css/week-menu.css',
             ],
             refresh: true,
         }),

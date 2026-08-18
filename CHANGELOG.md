@@ -26,3 +26,15 @@
   ингредиентов") через `trans_choice` и `lang/ru/recipes.php`.
 - Сидер тестовых рецептов (`RecipeSeeder`).
 - Фича-тесты на CRUD рецептов (`tests/Feature/RecipeTest.php`).
+- Меню на неделю: контроллер `WeekMenuController`, модель `MenuDay`,
+  миграции таблиц `menu_days` и pivot `menu_day_recipe`, форм-реквест
+  `StoreMenuDayRequest`.
+- Blade-шаблон недельной сетки по дням с выбором рецептов через
+  Tom Select (плагин `checkbox_options`), отдельная точка входа
+  в Vite (JS и CSS) для страницы меню.
+- Добавление и удаление рецептов для конкретного дня недели
+  (маршруты `week-menu.store`/`week-menu.destroy`).
+- Пункт «Меню на неделю» в навигации, ссылка ведёт на реализованную
+  страницу.
+- Сидер тестового меню на неделю (`MenuDaySeeder`).
+- Фича-тесты на меню на неделю (`tests/Feature/WeekMenuTest.php`).

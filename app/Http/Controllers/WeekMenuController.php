@@ -7,7 +7,10 @@ use App\Models\MenuDay;
 use App\Models\Recipe;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 /**
  * Контроллер страницы меню на неделю
@@ -17,13 +20,9 @@ class WeekMenuController extends Controller
     /**
      * Страница меню на неделю
      */
-    public function index()
+    public function index(Request $request)
     {
-        $monday = request()->query('monday')
-            ? Carbon::parse(request()->query('monday'))->startOfWeek(CarbonInterface::MONDAY)
-            : Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-
-        $sunday = $monday->copy()->addDays(6);
+        [$monday, $sunday] = $this->resolveWeekRange($request);
 
         $menuDays = MenuDay::whereBetween('day', [$monday, $sunday])
             ->with(['recipes' => fn ($query) => $query->withCount('products')])
@@ -55,7 +54,7 @@ class WeekMenuController extends Controller
 
     /**
      * Обработать запрос на сохранение рецепта/рецептов для дня меню
-     * @param StoreMenuDayRequest $request
+     *
      * @return RedirectResponse
      */
     public function store(StoreMenuDayRequest $request)
@@ -72,8 +71,6 @@ class WeekMenuController extends Controller
     }
 
     /**
-     * @param MenuDay $menuDay
-     * @param Recipe $recipe
      * @return RedirectResponse
      */
     public function destroy(MenuDay $menuDay, Recipe $recipe)
@@ -83,5 +80,40 @@ class WeekMenuController extends Controller
         return redirect()
             ->route('week-menu')
             ->with('success', 'Рецепт успешно удален');
+    }
+
+    /**
+     * Получить список уникальных продуктов на неделю
+     *
+     * @return Factory|\Illuminate\Contracts\View\View|View
+     */
+    public function shoppingList(Request $request)
+    {
+        [$monday, $sunday] = $this->resolveWeekRange($request);
+
+        $menuDays = MenuDay::whereBetween('day', [$monday, $sunday])
+            ->with('recipes.products')
+            ->get();
+
+        $products = $menuDays->flatMap(fn ($menuDay) => $menuDay->recipes)
+            ->flatMap(fn ($recipe) => $recipe->products)
+            ->unique('id')
+            ->sortBy('title');
+
+        return view('week-menu.shopping-list', compact('products'));
+    }
+
+    /**
+     * Получить начало и конец недели
+     *
+     * @return array
+     */
+    private function resolveWeekRange(Request $request)
+    {
+        $monday = $request->query('monday')
+            ? Carbon::parse($request->query('monday'))->startOfWeek(CarbonInterface::MONDAY)
+            : Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+
+        return [$monday, $monday->copy()->addDays(6)];
     }
 }

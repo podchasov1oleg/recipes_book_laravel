@@ -66,6 +66,38 @@ class WeekMenuIndexPage {
                 btn.closest('.js-recipe-popup').classList.add('hidden');
             });
         });
+
+        // кнопка получения списка продуктов
+        const shoppingListButton = document.querySelector('.js-shopping-list-btn');
+        const mondayDate = shoppingListButton.dataset.monday;
+        shoppingListButton.addEventListener('click', () => {
+            fetch(`/week-menu/shopping-list?monday=${mondayDate}`)
+                .then(res => res.text())
+                .then(html => {
+                    const panel = document.querySelector('.js-shopping-list-panel');
+                    panel.innerHTML = html;
+                    this.togglePanel();
+
+                    // кнопка сокрытия боковой панели
+                    document.querySelector('.js-shopping-list-close')
+                        .addEventListener('click', () => this.togglePanel());
+                });
+        });
+
+        // клик по backdrop-у тоже убирает aside
+        document.querySelector('.js-shopping-list-backdrop')
+            .addEventListener('click', () => this.togglePanel());
+    }
+
+    /**
+     * Переключить видимость боковой панели со списком продуктов
+     */
+    togglePanel()
+    {
+        document.querySelector('.js-shopping-list-panel').classList.toggle('translate-x-full');
+        ['opacity-0', 'pointer-events-none'].forEach(className => {
+            document.querySelector('.js-shopping-list-backdrop').classList.toggle(className);
+        });
     }
 }
 

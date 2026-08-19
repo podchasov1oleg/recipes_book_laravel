@@ -7,8 +7,10 @@
     {{-- заголовок + кнопка списка покупок --}}
     <div class="flex justify-between items-center">
         <h1 class="h1">Меню на неделю</h1>
-        {{--todo сюда добавить кнопку со списком покупок--}}
-        {{-- <button class="btn-primary">Список покупок</button> --}}
+        <button
+            class="js-shopping-list-btn btn-primary"
+            data-monday="{{$monday->format('Y-m-d')}}"
+        >Список покупок</button>
     </div>
 
     @if(session('success'))
@@ -93,6 +95,11 @@
             </li>
         @endforeach
     </ul>
+
+    <div class="js-shopping-list-backdrop fixed inset-0 bg-black/50 opacity-0 pointer-events-none transition-opacity duration-150"></div>
+
+    <aside class="js-shopping-list-panel fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl translate-x-full transition-transform duration-150 z-20">
+    </aside>
 
     @push('scripts')
         @vite('resources/js/week-menu/index.js')

@@ -50,7 +50,7 @@ class WeekMenuTest extends TestCase
     {
         $param = '2026-08-10';
 
-        $response = $this->get('/week-menu?monday=' . $param);
+        $response = $this->get('/week-menu?monday='.$param);
 
         $response->assertStatus(200);
 
@@ -79,7 +79,7 @@ class WeekMenuTest extends TestCase
 
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday=' . $monday);
+        $response = $this->get('/week-menu?monday='.$monday);
 
         $response->assertStatus(200);
 
@@ -115,9 +115,9 @@ class WeekMenuTest extends TestCase
         $recipe = Recipe::factory()->create();
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday=' . $monday);
+        $response = $this->get('/week-menu?monday='.$monday);
 
-        $optionHtml = '<option value="' . $recipe->id . '">';
+        $optionHtml = '<option value="'.$recipe->id.'">';
 
         $this->assertSame(6, substr_count($response->getContent(), $optionHtml));
     }
@@ -140,9 +140,9 @@ class WeekMenuTest extends TestCase
         $recipe->products()->attach($products);
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday=' . $monday);
+        $response = $this->get('/week-menu?monday='.$monday);
 
-        $response->assertSee($productsCount . ' ингредиента');
+        $response->assertSee($productsCount.' ингредиента');
     }
 
     /**
@@ -516,5 +516,139 @@ class WeekMenuTest extends TestCase
 
         $response->assertRedirect(route('week-menu'));
         $response->assertSessionHas('success');
+    }
+
+    /**
+     * Проверить, что список покупок содержит продукты рецептов,
+     * привязанных к дням выбранной недели
+     *
+     * @return void
+     */
+    public function test_shopping_list_returns_products_from_recipes_of_selected_week()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        $recipe = Recipe::factory()->create();
+        $products = Product::factory()->count(2)->create();
+        $recipe->products()->attach($products);
+        $menuDay->recipes()->attach($recipe);
+
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $response->assertOk();
+
+        foreach ($products as $product) {
+            $response->assertSee($product->title);
+        }
+    }
+
+    /**
+     * Проверить, что продукт рецепта, привязанного к дню вне
+     * выбранной недели, не попадает в список покупок
+     *
+     * @return void
+     */
+    public function test_shopping_list_excludes_products_from_other_weeks()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $prevMonday = $monday->copy()->subWeek();
+
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $prevMenuDay = MenuDay::factory()->create(['day' => $prevMonday]);
+
+        $recipe = Recipe::factory()->create();
+        $products = Product::factory()->count(2)->create();
+        $recipe->products()->attach($products);
+        $menuDay->recipes()->attach($recipe);
+
+        $otherRecipe = Recipe::factory()->create();
+        $otherProducts = Product::factory()->count(2)->create();
+        $otherRecipe->products()->attach($otherProducts);
+        $prevMenuDay->recipes()->attach($otherRecipe);
+
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        foreach ($products as $product) {
+            $response->assertSee($product->title);
+        }
+
+        foreach ($otherProducts as $otherProduct) {
+            $response->assertDontSee($otherProduct->title);
+        }
+    }
+
+    /**
+     * Проверить, что продукт, входящий сразу в два рецепта
+     * выбранной недели, отображается в списке покупок один раз
+     *
+     * @return void
+     */
+    public function test_shopping_list_deduplicates_product_shared_between_recipes()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        $recipe = Recipe::factory()->create();
+        $otherRecipe = Recipe::factory()->create();
+
+        $product1 = Product::factory()->create();
+        $product2 = Product::factory()->create();
+        $product3 = Product::factory()->create();
+
+        $recipe->products()->attach([$product1, $product2]);
+        $otherRecipe->products()->attach([$product3, $product2]);
+
+        $menuDay->recipes()->attach([$recipe, $otherRecipe]);
+
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $this->assertSame(1, substr_count($response->getContent(), $product2->title));
+    }
+
+    /**
+     * Проверить, что для недели без запланированных рецептов
+     * список покупок отображается пустым, без ошибок
+     *
+     * @return void
+     */
+    public function test_shopping_list_returns_empty_when_no_recipes_planned()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+
+        MenuDay::factory()->create(['day' => $monday]);
+
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $response->assertDontSee('<li>', false);
     }
 }

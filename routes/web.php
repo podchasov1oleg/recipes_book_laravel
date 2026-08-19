@@ -18,3 +18,6 @@ Route::post('/week-menu', [WeekMenuController::class, 'store'])->name('week-menu
 // удалить рецепт для дня
 Route::delete('/week-menu/{menuDay}/{recipe}', [WeekMenuController::class, 'destroy'])
     ->name('week-menu.destroy');
+// получить список продуктов на неделю
+Route::get('/week-menu/shopping-list', [WeekMenuController::class, 'shoppingList'])
+    ->name('week-menu.shopping-list');

@@ -24,8 +24,6 @@ class Recipe extends Model
 
     /**
      * Получить связанные с рецептом продукты
-     *
-     * @return BelongsToMany
      */
     public function products(): BelongsToMany
     {
@@ -34,8 +32,6 @@ class Recipe extends Model
 
     /**
      * Получить дни меню, к которым привязаны рецепты
-     *
-     * @return BelongsToMany
      */
     public function menuDays(): BelongsToMany
     {

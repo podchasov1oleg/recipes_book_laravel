@@ -234,6 +234,7 @@ class RecipeTest extends TestCase
      * а не просто required
      *
      * @return void
+     *
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
@@ -261,6 +262,7 @@ class RecipeTest extends TestCase
      * а не проходит валидацию
      *
      * @return void
+     *
      * @throws ContainerExceptionInterface
      * @throws NotFoundExceptionInterface
      */
@@ -312,7 +314,7 @@ class RecipeTest extends TestCase
             $this->assertStringContainsString('selected', $matches[0]);
         }
 
-        preg_match('/<option\s+value="' . $otherProduct->id . '"[^>]*>/', $content, $matches);
+        preg_match('/<option\s+value="'.$otherProduct->id.'"[^>]*>/', $content, $matches);
 
         $this->assertStringNotContainsString('selected', $matches[0]);
     }

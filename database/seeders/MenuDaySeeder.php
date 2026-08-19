@@ -26,9 +26,9 @@ class MenuDaySeeder extends Seeder
         $collection = collect($weekDays)->random(rand(3, 6));
 
         foreach ($collection as $item) {
-             MenuDay::factory()
-                 ->hasAttached(Recipe::inRandomOrder()->take(rand(1,3))->get())
-                 ->create(['day' => $item]);
+            MenuDay::factory()
+                ->hasAttached(Recipe::inRandomOrder()->take(rand(1, 3))->get())
+                ->create(['day' => $item]);
         }
     }
 }

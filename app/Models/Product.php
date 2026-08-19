@@ -24,8 +24,6 @@ class Product extends Model
 
     /**
      * Получить рецепты, в которых используется текущий продукт
-     *
-     * @return BelongsToMany
      */
     public function recipes(): BelongsToMany
     {

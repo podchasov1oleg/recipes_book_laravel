@@ -31,8 +31,6 @@ class MenuDay extends Model
 
     /**
      * Получить рецепты, которые относятся к этому дню меню
-     *
-     * @return BelongsToMany
      */
     public function recipes(): BelongsToMany
     {

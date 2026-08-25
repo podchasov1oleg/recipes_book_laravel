@@ -45,3 +45,10 @@
   (офканвас на Tailwind) с загрузкой содержимого через `fetch`
   по кнопке «Список покупок» на странице меню.
 - Фича-тесты на список покупок (`tests/Feature/WeekMenuTest.php`).
+
+### Изменено
+
+- Точки входа Vite (`app`, `bootstrap`, `week-menu`) переписаны
+  с JavaScript на TypeScript, добавлен `tsconfig.json`.
+- Подключён Alpine.js как общий рантайм интерактивности
+  Blade-шаблонов.

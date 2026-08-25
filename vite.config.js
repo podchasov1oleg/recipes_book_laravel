@@ -7,9 +7,9 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
-                'resources/js/app.js',
-                'resources/js/recipes/create.js',
-                'resources/js/week-menu/index.js',
+                'resources/ts/app.ts',
+                'resources/ts/recipes/create.ts',
+                'resources/ts/week-menu/index.ts',
                 'resources/css/week-menu.css',
             ],
             refresh: true,

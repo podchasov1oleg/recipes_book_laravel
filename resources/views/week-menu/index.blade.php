@@ -102,7 +102,7 @@
     </aside>
 
     @push('scripts')
-        @vite('resources/js/week-menu/index.js')
+        @vite('resources/ts/week-menu/index.ts')
     @endpush
 
     @push('styles')

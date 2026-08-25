@@ -43,7 +43,11 @@ class RecipeController extends Controller
 
         $recipe->save();
 
-        $recipe->products()->sync($validated['product_ids']);
+        $recipe->products()->sync(
+            collect($validated['products'])->mapWithKeys(fn ($product) => [
+                $product['product_id'] => ['quantity' => $product['quantity']],
+            ])
+        );
 
         return redirect()->route('recipes.index')
             ->with('success', 'Рецепт успешно создан');
@@ -67,7 +71,11 @@ class RecipeController extends Controller
         $validated = $request->validated();
 
         $recipe->update($validated);
-        $recipe->products()->sync($validated['product_ids']);
+        $recipe->products()->sync(
+            collect($validated['products'])->mapWithKeys(fn ($product) => [
+                $product['product_id'] => ['quantity' => $product['quantity']],
+            ])
+        );
 
         return redirect()->route('recipes.index')
             ->with('success', 'Рецепт успешно изменен');

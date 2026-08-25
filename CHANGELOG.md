@@ -19,7 +19,8 @@
 - Русский перевод стандартных сообщений валидации Laravel (`lang/ru`).
 - CRUD рецептов: контроллер, модель, миграции (включая pivot-таблицу
   `product_recipe` с `cascadeOnDelete`), форм-реквесты с валидацией
-  `product_ids` (`exists`, `min:1`), политика `RecipePolicy`.
+  продуктов (`products.*.product_id`, `products.*.quantity`),
+  политика `RecipePolicy`.
 - Blade-шаблоны списка, создания и редактирования рецепта; пункт
   «Рецепты» в навигации.
 - Мультиселект продуктов для формы рецепта на базе Tom Select
@@ -28,6 +29,12 @@
   ингредиентов") через `trans_choice` и `lang/ru/recipes.php`.
 - Сидер тестовых рецептов (`RecipeSeeder`).
 - Фича-тесты на CRUD рецептов (`tests/Feature/RecipeTest.php`).
+- Количество продукта в рецепте: поле `quantity` в pivot-таблице
+  `product_recipe`, посчитываемое отдельно для каждого продукта —
+  нужно для будущего расчёта списка покупок. Ошибки валидации
+  количества выводятся адресно под строкой продукта, остальные —
+  общим блоком; расчёт вынесен в общий для create/edit View
+  Composer.
 - Меню на неделю: контроллер `WeekMenuController`, модель `MenuDay`,
   миграции таблиц `menu_days` и pivot `menu_day_recipe`, форм-реквест
   `StoreMenuDayRequest`.

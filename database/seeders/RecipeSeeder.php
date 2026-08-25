@@ -15,7 +15,10 @@ class RecipeSeeder extends Seeder
     {
         for ($i = 0; $i < 10; $i++) {
             Recipe::factory()
-                ->hasAttached(Product::inRandomOrder()->take(rand(1, 5))->get())
+                ->hasAttached(
+                    Product::inRandomOrder()->take(rand(1, 5))->get(),
+                    ['quantity' => rand(1, 500)],
+                )
                 ->create();
         }
     }

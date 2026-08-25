@@ -29,8 +29,32 @@ class UpdateRecipeRequest extends FormRequest
                 'max:255',
                 Rule::unique('recipes', 'title')->ignore($this->route('recipe')),
             ],
-            'product_ids' => 'required|array|min:1',
-            'product_ids.*' => 'integer|exists:products,id',
+            'products' => 'required|array|min:1',
+            'products.*.product_id' => 'required|integer|exists:products,id',
+            'products.*.quantity' => 'required|integer|min:1',
         ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function messages(): array
+    {
+        return [
+            'products.*.quantity.required' => 'Введите количество',
+            'products.*.quantity.integer' => 'Количество должно быть целым числом',
+            'products.*.quantity.min' => 'Количество должно быть не менее :min',
+            'products.required' => 'Необходимо добавить хотя бы один продукт',
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'products' => json_decode($this->request->get('products'), true),
+        ]);
     }
 }

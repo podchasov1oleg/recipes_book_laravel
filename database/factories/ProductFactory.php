@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Unit;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,6 +22,7 @@ class ProductFactory extends Factory
     {
         return [
             'title' => $this->faker->unique()->word(),
+            'unit' => $this->faker->randomElement(Unit::cases()),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Unit;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
@@ -28,7 +29,9 @@ class ProductController extends Controller
      */
     public function create(): View
     {
-        return view('products.create');
+        $units = collect(Unit::cases())->mapWithKeys(fn (Unit $unit) => [$unit->value => $unit->label()]);
+
+        return view('products.create', compact('units'));
     }
 
     /**
@@ -51,7 +54,9 @@ class ProductController extends Controller
      */
     public function edit(Product $product): View
     {
-        return view('products.edit', compact('product'));
+        $units = collect(Unit::cases())->mapWithKeys(fn (Unit $unit) => [$unit->value => $unit->label()]);
+
+        return view('products.edit', compact('product', 'units'));
     }
 
     /**

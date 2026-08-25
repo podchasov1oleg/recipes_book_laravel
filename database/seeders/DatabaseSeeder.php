@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // создать продукты
-        $this->call(ProductSeeder::class, ['count' => 20]);
+        $this->call(ProductSeeder::class);
 
         // создать рецепты
         $this->call(RecipeSeeder::class, ['count' => 10]);

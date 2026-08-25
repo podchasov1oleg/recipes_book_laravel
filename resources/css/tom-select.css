@@ -34,7 +34,7 @@
 
     /* ts-control - инпут */
     .ts-control {
-        @apply flex border rounded-md transition-colors duration-150 border-gray-400 py-1 px-2;
+        @apply flex border rounded-md transition-colors duration-150 bg-white border-gray-300 py-1 px-2;
 
         & > input {
             @apply flex-auto p-0 min-h-0 m-0 border-none outline-none;
@@ -43,7 +43,7 @@
 
     /* ts-dropdown - обертка над dropdown */
     .ts-dropdown {
-        @apply mt-2 h-auto p-0 z-50 border border-gray-400 rounded-lg shadow-lg;
+        @apply mt-2 h-auto p-0 z-50 border border-gray-300 rounded-lg shadow-lg bg-white;
 
         .active {
             @apply bg-slate-50 ;

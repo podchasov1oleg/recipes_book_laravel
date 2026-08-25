@@ -24,23 +24,30 @@
                     <tr>
                         <td
                             @class([
-                                'px-3',
-                                'py-2',
+                                'px-4',
+                                'py-3',
                                 'border-t',
                                 'border-l',
-                                'border-gray-400',
+                                'border-gray-300',
+                                'bg-white',
                                 'border-b' => $loop->last,
                                 'rounded-bl-xl' => $loop->last,
                                 'rounded-tl-xl' => $loop->first,
                             ])
-                        >{{$product->title}}</td>
+                        >
+                            <span class="capitalize">{{$product->title}}</span>
+                            <span
+                                class="text-sm text-gray-400 py-0.5 px-3 border border-gray-300 rounded-xl ml-2 bg-gray-50"
+                            >{{$product->unit}}</span>
+                        </td>
                         <td
                             @class([
-                                'px-3',
-                                'py-2',
+                                'px-4',
+                                'py-3',
                                 'border-t',
                                 'border-r',
-                                'border-gray-400',
+                                'border-gray-300',
+                                'bg-white',
                                 'border-b' => $loop->last,
                                 'rounded-br-xl' => $loop->last,
                                 'rounded-tr-xl' => $loop->first,

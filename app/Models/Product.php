@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Unit;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,14 @@ class Product extends Model
      */
     protected $fillable = [
         'title',
+        'unit',
+    ];
+
+    /**
+     * {@inheritdoc}
+     */
+    protected $casts = [
+        'unit' => Unit::class,
     ];
 
     /**

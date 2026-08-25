@@ -5,14 +5,15 @@
 
     <h1 class="h1">Добавить продукт</h1>
 
-    <form class="" action="{{route('products.store')}}" method="POST">
+    <form action="{{route('products.store')}}" method="POST">
         @csrf
         <div>
-            <label class="mb-2 block" for="title">Название продукта:</label>
+            <label class="mb-1 block text-gray-700" for="title">Название продукта:</label>
             <input
                 @class([
                     'block',
                     'text-input',
+                    'mb-3' => !$errors->has('title'),
                     'is-invalid' => $errors->has('title'),
                 ])
                 id="title"
@@ -22,7 +23,28 @@
                 placeholder="Введите название"
             />
             @error('title')
-                <p class="text-red-500 text-sm">{{$message}}</p>
+                <p class="text-red-500 text-sm mb-3">{{$message}}</p>
+            @enderror
+
+            <label class="mb-1 block text-gray-700" for="unit">Единица измерения:</label>
+            <select
+                @class([
+                    'select-input',
+                    'mb-3' => !$errors->has('unit'),
+                    'is-invalid' => $errors->has('unit'),
+                ])
+                name="unit"
+                id="unit"
+            >
+                @foreach($units as $value => $label)
+                    <option
+                        value="{{$value}}"
+                        @selected(old('unit') == $value)
+                    >{{$label}} ({{$value}})</option>
+                @endforeach
+            </select>
+            @error('unit')
+                <p class="text-red-500 text-sm mb-3">{{$message}}</p>
             @enderror
 
             <div>

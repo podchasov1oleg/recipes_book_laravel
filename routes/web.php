@@ -15,6 +15,9 @@ Route::resource('recipes', RecipeController::class)->except('show');
 Route::get('/week-menu', [WeekMenuController::class, 'index'])->name('week-menu');
 // сохранение рецептов на день
 Route::post('/week-menu', [WeekMenuController::class, 'store'])->name('week-menu.store');
+// изменение кол-ва порций для рецепта на день
+Route::patch('/week-menu/{menuDay}/{recipe}', [WeekMenuController::class, 'updateServings'])
+    ->name('week-menu.update-servings');
 // удалить рецепт для дня
 Route::delete('/week-menu/{menuDay}/{recipe}', [WeekMenuController::class, 'destroy'])
     ->name('week-menu.destroy');

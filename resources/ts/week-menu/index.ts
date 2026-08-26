@@ -100,6 +100,42 @@ class WeekMenuIndexPage {
         if (backdrop !== null) {
             backdrop.addEventListener('click', () => this.togglePanel());
         }
+
+        // повесить событие на нажатие кнопок увеличения/уменьшения кол-ва порций
+        document.querySelectorAll<HTMLElement>('.js-serving-btn')
+            .forEach(btn => btn.addEventListener('click', () => {
+                if (btn.dataset.url !== undefined) {
+                    window.axios.patch<{servings: number}>(btn.dataset.url, {action: btn.dataset.action ?? ''})
+                        .then(r => this.updateServingControls(btn.parentElement, r.data.servings))
+                        .catch(e => {
+                            alert(e.message);
+                            console.error(e);
+                        });
+                }
+            }));
+    }
+
+    /**
+     * Обновить текст и disabled-состояние кнопок счётчика порций
+     */
+    private updateServingControls(container: HTMLElement | null | undefined, servings: number)
+    {
+        const servingText = container?.querySelector('.js-serving-text');
+
+        if (servingText) {
+            servingText.textContent = String(servings);
+        }
+
+        const decreaseBtn = container?.querySelector<HTMLButtonElement>('[data-action=dec]');
+        const increaseBtn = container?.querySelector<HTMLButtonElement>('[data-action=inc]');
+
+        if (decreaseBtn) {
+            decreaseBtn.disabled = servings === 1;
+        }
+
+        if (increaseBtn) {
+            increaseBtn.disabled = servings === 255;
+        }
     }
 
     /**

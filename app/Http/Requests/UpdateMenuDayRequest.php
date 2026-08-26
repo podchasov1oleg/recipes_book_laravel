@@ -6,9 +6,9 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Форма запроса на создание дня меню
+ * Форма запроса на изменение дня меню
  */
-class StoreMenuDayRequest extends FormRequest
+class UpdateMenuDayRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -26,9 +26,7 @@ class StoreMenuDayRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'day' => 'required|date|date_format:Y-m-d',
-            'recipe_ids' => 'required|array',
-            'recipe_ids.*' => 'exists:recipes,id',
+            'action' => 'required|in:inc,dec',
         ];
     }
 }

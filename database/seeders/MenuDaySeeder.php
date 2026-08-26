@@ -23,11 +23,14 @@ class MenuDaySeeder extends Seeder
             $weekDays[] = $monday->copy()->addDays($i);
         }
 
-        $collection = collect($weekDays)->random(rand(3, 6));
+        $collection = collect($weekDays)->random(rand(4, 6));
 
         foreach ($collection as $item) {
             MenuDay::factory()
-                ->hasAttached(Recipe::inRandomOrder()->take(rand(1, 3))->get())
+                ->hasAttached(
+                    Recipe::inRandomOrder()->take(rand(1, 3))->get(),
+                    ['servings' => rand(1, 3)],
+                )
                 ->create(['day' => $item]);
         }
     }

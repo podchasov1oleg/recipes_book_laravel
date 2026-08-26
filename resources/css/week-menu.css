@@ -18,7 +18,7 @@
     }
 
     .week-recipe {
-        @apply bg-gray-100 border border-gray-300 rounded-md p-2 grid grid-cols-[1fr_auto] items-start;
+        @apply bg-gray-100 border border-gray-300 rounded-md p-2 grid grid-cols-[1fr_auto] gap-1 items-start;
     }
 
     .plugin-checkbox_options:not(.rtl) {
@@ -41,5 +41,9 @@
 
     .recipe-popup {
         @apply absolute z-10 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 top-full left-0 mt-2;
+    }
+
+    .btn-servings {
+        @apply w-6 h-6 border border-gray-300 bg-white inline-grid place-items-center cursor-pointer leading-none text-gray-400 transition-colors hover:text-blue-400 hover:border-blue-400 rounded-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-gray-400 disabled:hover:border-gray-300;
     }
 }

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMenuDayRequest;
+use App\Http\Requests\UpdateMenuDayRequest;
 use App\Models\MenuDay;
 use App\Models\Recipe;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\Factory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -63,7 +65,10 @@ class WeekMenuController extends Controller
 
         $menuDay = MenuDay::firstOrCreate(['day' => $validated['day']]);
 
-        $menuDay->recipes()->syncWithoutDetaching($validated['recipe_ids']);
+        $menuDay->recipes()->syncWithoutDetaching(
+            collect($validated['recipe_ids'])
+                ->mapWithKeys(fn ($recipeId) => [$recipeId => ['servings' => 1]])
+        );
 
         return redirect()
             ->route('week-menu')
@@ -101,6 +106,32 @@ class WeekMenuController extends Controller
             ->sortBy('title');
 
         return view('week-menu.shopping-list', compact('products'));
+    }
+
+    /**
+     * Обновить кол-во порций для рецепта дня
+     *
+     * @param UpdateMenuDayRequest $request
+     * @param MenuDay $menuDay
+     * @param Recipe $recipe
+     * @return JsonResponse
+     */
+    public function updateServings(UpdateMenuDayRequest $request, MenuDay $menuDay, Recipe $recipe): JsonResponse
+    {
+        $pivot = $menuDay->recipes()->where('recipe_id', $recipe->id)->first()?->pivot;
+
+        if ($pivot === null) {
+            abort(404);
+        }
+
+        $newServing = match ($request->validated('action')) {
+            'inc' => min($pivot->servings + 1, 255),
+            'dec' => max($pivot->servings - 1, 1),
+        };
+
+        $menuDay->recipes()->updateExistingPivot($recipe->id, ['servings' => $newServing]);
+
+        return response()->json(['servings' => $newServing]);
     }
 
     /**

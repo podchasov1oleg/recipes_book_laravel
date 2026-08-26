@@ -63,6 +63,25 @@
                             <span class="text-gray-500 text-xs col-span-2">
                                 {{trans_choice('recipes.products_count', $recipe->products_count)}}
                             </span>
+                            <div class="col-span-2 flex items-center justify-between">
+                                <button
+                                    class="js-serving-btn btn-servings"
+                                    type="button"
+                                    title="Уменьшить кол-во порций"
+                                    @disabled($recipe->pivot->servings === 1)
+                                    data-url="{{route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe])}}"
+                                    data-action="dec"
+                                >–</button>
+                                <span class="js-serving-text">{{$recipe->pivot->servings}}</span>
+                                <button
+                                    class="js-serving-btn btn-servings"
+                                    type="button"
+                                    title="Увеличить кол-во порций"
+                                    @disabled($recipe->pivot->servings === 255)
+                                    data-url="{{route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe])}}"
+                                    data-action="inc"
+                                >+</button>
+                            </div>
                         </li>
                     @empty
                         <li class="week-day-empty">

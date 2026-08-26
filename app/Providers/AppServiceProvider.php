@@ -34,7 +34,7 @@ class AppServiceProvider extends ServiceProvider
 
             // остальные ошибки (title и products.*.quantity уже выводятся адресно)
             $otherErrors = collect($errors->getMessages())
-                ->except('title')
+                ->except(['title', 'servings'])
                 ->reject(fn ($messages, $key) => Str::is('products.*.quantity', $key))
                 ->flatten();
 

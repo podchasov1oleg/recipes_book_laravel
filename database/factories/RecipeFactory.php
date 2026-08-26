@@ -19,6 +19,7 @@ class RecipeFactory extends Factory
     {
         return [
             'title' => $this->faker->unique()->word(),
+            'servings' => $this->faker->numberBetween(1, 8),
         ];
     }
 }

@@ -20,6 +20,7 @@ class Recipe extends Model
      */
     protected $fillable = [
         'title',
+        'servings',
     ];
 
     /**

@@ -23,23 +23,48 @@
     >
         @csrf
         @method('PUT')
+
         <input type="hidden" name="products" :value="JSON.stringify(products)">
-        <label class="mb-2 block text-gray-700" for="title">Название рецепта:</label>
-        <input
-            @class([
-                'block',
-                'text-input',
-                'is-invalid' => $errors->has('title'),
-            ])
-            id="title"
-            type="text"
-            name="title"
-            value="{{old('title', $recipe->title)}}"
-            placeholder="Введите название"
-        />
-        @error('title')
-            <p class="text-red-500 text-sm">{{$message}}</p>
-        @enderror
+
+        <div class="flex gap-3">
+            <div class="w-full">
+                <label class="mb-2 block text-gray-700" for="title">Название рецепта:</label>
+                <input
+                    @class([
+                        'block',
+                        'text-input',
+                        'is-invalid' => $errors->has('title'),
+                    ])
+                    id="title"
+                    type="text"
+                    name="title"
+                    value="{{old('title', $recipe->title)}}"
+                    placeholder="Введите название"
+                />
+                @error('title')
+                    <p class="text-red-500 text-sm">{{$message}}</p>
+                @enderror
+            </div>
+            <div class="w-40">
+                <label for="servings" class="mb-2 block text-gray-700">Порций:</label>
+                <input
+                    @class([
+                        'block',
+                        'text-input',
+                        'is-invalid' => $errors->has('servings'),
+                    ])
+                    type="number"
+                    min="1"
+                    max="255"
+                    id="servings"
+                    name="servings"
+                    value="{{old('servings', $recipe->servings)}}"
+                />
+                @error('servings')
+                    <p class="text-red-500 text-sm">{{$message}}</p>
+                @enderror
+            </div>
+        </div>
 
         <label class="my-2 block text-gray-700" for="product-ids">Продукты:</label>
 

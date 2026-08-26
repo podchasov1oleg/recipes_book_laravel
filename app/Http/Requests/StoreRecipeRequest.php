@@ -27,6 +27,7 @@ class StoreRecipeRequest extends FormRequest
             'products' => 'required|array|min:1',
             'products.*.product_id' => 'required|integer|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1',
+            'servings' => 'required|integer|min:1|max:255',
         ];
     }
 
@@ -40,6 +41,9 @@ class StoreRecipeRequest extends FormRequest
             'products.*.quantity.integer' => 'Количество должно быть целым числом',
             'products.*.quantity.min' => 'Количество должно быть не менее :min',
             'products.required' => 'Необходимо добавить хотя бы один продукт',
+            'servings.required' => 'Введите порции',
+            'servings.min' => 'Порций не может быть менее :min',
+            'servings.max' => 'Порций не может быть более :max',
         ];
     }
 

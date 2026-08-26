@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Unit;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Форма запроса на создание продукта
@@ -27,6 +29,10 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'title' => 'required|max:255|unique:products,title',
+            'unit' => [
+                'required',
+                Rule::enum(Unit::class),
+            ],
         ];
     }
 }

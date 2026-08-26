@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Unit;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,10 @@ class UpdateProductRequest extends FormRequest
                 'required',
                 'max:255',
                 Rule::unique('products', 'title')->ignore($this->route('product')),
+            ],
+            'unit' => [
+                'required',
+                Rule::enum(Unit::class),
             ],
         ];
     }

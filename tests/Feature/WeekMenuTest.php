@@ -585,17 +585,19 @@ class WeekMenuTest extends TestCase
         );
 
         foreach ($products as $product) {
-            $response->assertSee($product->title);
+            $response->assertSee('>'.$product->title.'<', false);
         }
 
         foreach ($otherProducts as $otherProduct) {
-            $response->assertDontSee($otherProduct->title);
+            $response->assertDontSee('>'.$otherProduct->title.'<', false);
         }
     }
 
     /**
      * Проверить, что продукт, входящий сразу в два рецепта
-     * выбранной недели, отображается в списке покупок один раз
+     * выбранной недели, отображается в списке покупок один раз,
+     * а его количество — сумма пересчитанных по порциям величин
+     * из обоих рецептов
      *
      * @return void
      */
@@ -604,17 +606,26 @@ class WeekMenuTest extends TestCase
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
         $menuDay = MenuDay::factory()->create(['day' => $monday]);
 
-        $recipe = Recipe::factory()->create();
-        $otherRecipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->create(['servings' => 2]);
+        $otherRecipe = Recipe::factory()->create(['servings' => 4]);
 
         $product1 = Product::factory()->create();
         $product2 = Product::factory()->create();
         $product3 = Product::factory()->create();
 
-        $recipe->products()->attach([$product1, $product2]);
-        $otherRecipe->products()->attach([$product3, $product2]);
+        $recipe->products()->attach([
+            $product1->id => ['quantity' => 1],
+            $product2->id => ['quantity' => 2],
+        ]);
+        $otherRecipe->products()->attach([
+            $product2->id => ['quantity' => 3],
+            $product3->id => ['quantity' => 4],
+        ]);
 
-        $menuDay->recipes()->attach([$recipe, $otherRecipe]);
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 2],
+            $otherRecipe->id => ['servings' => 4],
+        ]);
 
         $response = $this->get(
             route(
@@ -625,7 +636,12 @@ class WeekMenuTest extends TestCase
             )
         );
 
-        $this->assertSame(1, substr_count($response->getContent(), $product2->title));
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), '>'.$product2->title.'<'),
+        );
+
+        $response->assertSee('>5 '.$product2->unit->value.'</span>', false);
     }
 
     /**
@@ -650,5 +666,420 @@ class WeekMenuTest extends TestCase
         );
 
         $response->assertDontSee('<li>', false);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_shopping_list_scales_quantity_by_recipe_and_day_servings()
+    {
+        $product = Product::factory()->create();
+        $recipe = Recipe::factory()->create(['servings' => 2]);
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 100],
+        ]);
+
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 4],
+        ]);
+
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $response->assertSee('>200 '.$product->unit->value.'</span>', false);
+    }
+
+    /**
+     * Проверить, что продукт, входящий в два разных рецепта одной
+     * недели, суммируется по количеству, пересчитанному отдельно
+     * для каждого рецепта (разные `servings`/`quantity`)
+     *
+     * @return void
+     */
+    public function test_shopping_list_sums_quantity_of_shared_product_across_recipes()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт 1
+        $recipe1 = Recipe::factory()->create(['servings' => 2]);
+        // рецепт 2
+        $recipe2 = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецептам
+        $recipe1->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+        $recipe2->products()->attach([
+            $product->id => ['quantity' => 20],
+        ]);
+
+        // создать дни меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $tuesday = Carbon::now()->startOfWeek(CarbonInterface::TUESDAY);
+
+        $menuDay1 = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay2 = MenuDay::factory()->create(['day' => $tuesday]);
+
+        // прикрепить рецепты
+        $menuDay1->recipes()->attach([
+            $recipe1->id => ['servings' => 6],
+        ]);
+        $menuDay2->recipes()->attach([
+            $recipe2->id => ['servings' => 8],
+        ]);
+
+        // отправить запрос на получение списка продуктов
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $response->assertSee('>70 '.$product->unit->value.'</span>', false);
+    }
+
+    /**
+     * Проверить, что один и тот же рецепт, назначенный на разные дни
+     * одной недели, суммирует свой вклад в продукт по всем дням,
+     * а не только за один из них
+     *
+     * @return void
+     */
+    public function test_shopping_list_sums_quantity_of_product_across_multiple_days()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 2]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать дни меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $tuesday = Carbon::now()->startOfWeek(CarbonInterface::TUESDAY);
+
+        $menuDay1 = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay2 = MenuDay::factory()->create(['day' => $tuesday]);
+
+        // прикрепить рецепты
+        $menuDay1->recipes()->attach([
+            $recipe->id => ['servings' => 6],
+        ]);
+        $menuDay2->recipes()->attach([
+            $recipe->id => ['servings' => 8],
+        ]);
+
+        // отправить запрос на получение списка продуктов
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        $response->assertSee('>70 '.$product->unit->value.'</span>', false);
+    }
+
+    /**
+     * Проверить, что дробный результат пересчёта количества
+     * округляется (`round()`) при выводе в список покупок
+     *
+     * @return void
+     */
+    public function test_shopping_list_rounds_fractional_quantity()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 1],
+        ]);
+
+        // отправить запрос на получение списка продуктов
+        $response = $this->get(
+            route(
+                'week-menu.shopping-list',
+                [
+                    'monday' => $monday->format('Y-m-d'),
+                ]
+            )
+        );
+
+        // 10 / 4 * 1 = 2.5, но после round будет 3
+        $response->assertSee('>3 '.$product->unit->value.'</span>', false);
+    }
+
+    /**
+     * Проверить, что `action=inc` увеличивает `menu_day_recipe.servings`
+     * на 1 и возвращает новое значение в JSON-ответе
+     *
+     * @return void
+     */
+    public function test_update_servings_increments_pivot_value()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 2],
+        ]);
+
+        // отправить запрос на увеличение servings
+
+        $response = $this->patch(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
+            ['action' => 'inc']
+        );
+
+        $response->assertJson(['servings' => 3]);
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $menuDay->id,
+            'recipe_id' => $recipe->id,
+            'servings' => 3,
+        ]);
+    }
+
+    /**
+     * Проверить, что `action=dec` уменьшает `menu_day_recipe.servings`
+     * на 1 и возвращает новое значение в JSON-ответе
+     *
+     * @return void
+     */
+    public function test_update_servings_decrements_pivot_value()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 2],
+        ]);
+
+        // отправить запрос на уменьшение servings
+        $response = $this->patch(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
+            ['action' => 'dec']
+        );
+
+        $response->assertJson(['servings' => 1]);
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $menuDay->id,
+            'recipe_id' => $recipe->id,
+            'servings' => 1,
+        ]);
+    }
+
+    /**
+     * Проверить, что при `servings=255` `action=inc` не увеличивает
+     * значение дальше максимума
+     *
+     * @return void
+     */
+    public function test_update_servings_does_not_exceed_max()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 255],
+        ]);
+
+        // отправить запрос на изменение servings
+        $response = $this->patch(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
+            ['action' => 'inc']
+        );
+
+        $response->assertJson(['servings' => 255]);
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $menuDay->id,
+            'recipe_id' => $recipe->id,
+            'servings' => 255,
+        ]);
+    }
+
+    /**
+     * Проверить, что при `servings=1` `action=dec` не уменьшает
+     * значение ниже минимума
+     *
+     * @return void
+     */
+    public function test_update_servings_does_not_go_below_min()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 1],
+        ]);
+
+        // отправить запрос на изменение servings
+        $response = $this->patch(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
+            ['action' => 'dec']
+        );
+
+        $response->assertJson(['servings' => 1]);
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $menuDay->id,
+            'recipe_id' => $recipe->id,
+            'servings' => 1,
+        ]);
+    }
+
+    /**
+     * Проверить, что `action`, отличный от `inc`/`dec`, отклоняется
+     * валидацией и не меняет `servings` в БД
+     *
+     * @return void
+     */
+    public function test_update_servings_requires_valid_action()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 1],
+        ]);
+
+        // отправить запрос на изменение servings (как реальный axios.patch —
+        // с X-Requested-With, чтобы Laravel вернул 422 JSON, а не редирект)
+        $response = $this->patchJson(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
+            ['action' => 'some']
+        );
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('action');
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $menuDay->id,
+            'recipe_id' => $recipe->id,
+            'servings' => 1,
+        ]);
+    }
+
+    /**
+     * Проверить, что запрос на изменение `servings` для рецепта,
+     * не привязанного к переданному дню меню, возвращает 404
+     *
+     * @return void
+     */
+    public function test_update_servings_returns_404_for_recipe_not_attached_to_day()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        $unattachedRecipe = Recipe::factory()->create(['servings' => 6]);
+        $unattachedRecipe->products()->attach([
+            $product->id => ['quantity' => 20],
+        ]);
+
+        // создать день меню
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+
+        // прикрепить рецепты
+        $menuDay->recipes()->attach([
+            $recipe->id => ['servings' => 1],
+        ]);
+
+        // отправить запрос на изменение servings
+        $response = $this->patch(
+            route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $unattachedRecipe]),
+            ['action' => 'inc']
+        );
+
+        $response->assertNotFound();
     }
 }

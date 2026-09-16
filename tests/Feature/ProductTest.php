@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Unit;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -52,11 +53,20 @@ class ProductTest extends TestCase
      */
     public function test_store_creates_product()
     {
-        $response = $this->post(route('products.store'), ['title' => 'Test Product']);
+        $response = $this->post(
+            route('products.store'),
+            [
+                'title' => 'Test Product',
+                'unit' => Unit::Gram->value,
+            ],
+        );
 
         $response->assertRedirect(route('products.index'));
 
-        $this->assertDatabaseHas('products', ['title' => 'Test Product']);
+        $this->assertDatabaseHas('products', [
+            'title' => 'Test Product',
+            'unit' => Unit::Gram->value,
+        ]);
     }
 
     /**
@@ -104,6 +114,41 @@ class ProductTest extends TestCase
     }
 
     /**
+     * Проверить, что без unit продукт не создаётся
+     *
+     * @return void
+     */
+    public function test_store_requires_unit()
+    {
+        $response = $this->post(
+            route('products.store'), [
+                'title' => 'Test Product',
+            ]);
+
+        $response->assertSessionHasErrors('unit');
+
+        $this->assertDatabaseMissing('products', ['title' => 'Test Product']);
+    }
+
+    /**
+     * Проверить, что недопустимое значение unit отклоняется валидацией
+     *
+     * @return void
+     */
+    public function test_store_rejects_invalid_unit()
+    {
+        $response = $this->post(
+            route('products.store'), [
+            'title' => 'Test Product',
+            'unit' => 'random_string',
+        ]);
+
+        $response->assertSessionHasErrors('unit');
+
+        $this->assertDatabaseMissing('products', ['title' => 'Test Product']);
+    }
+
+    /**
      * Убедиться, что форма редактирования отображается с данными продукта
      *
      * @return void
@@ -120,19 +165,31 @@ class ProductTest extends TestCase
     }
 
     /**
-     * Убедиться в том, что форма изменения продукта меняет его название
+     * Убедиться в том, что форма изменения продукта меняет его поля
      *
      * @return void
      */
-    public function test_update_changes_title()
+    public function test_update_changes_fields()
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->create([
+            'title' => 'Some Product',
+            'unit' => Unit::Gram->value,
+        ]);
 
-        $response = $this->put(route('products.update', $product), ['title' => 'Test Product']);
+        $response = $this->put(
+            route('products.update', $product),
+            [
+                'title' => 'Test Product',
+                'unit' => Unit::Milliliter->value,
+            ]
+        );
 
         $response->assertRedirect(route('products.index'));
 
-        $this->assertDatabaseHas('products', ['title' => 'Test Product']);
+        $this->assertDatabaseHas('products', [
+            'title' => 'Test Product',
+            'unit' => Unit::Milliliter->value,
+        ]);
     }
 
     /**
@@ -144,7 +201,13 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->put(route('products.update', $product), ['title' => $product->title]);
+        $response = $this->put(
+            route('products.update', $product),
+            [
+                'title' => $product->title,
+                'unit' => Unit::Gram->value,
+            ],
+        );
 
         $response->assertRedirect(route('products.index'));
     }
@@ -167,6 +230,46 @@ class ProductTest extends TestCase
         $this->assertDatabaseHas('products', ['title' => $product1->title]);
 
         $this->assertDatabaseHas('products', ['title' => $product2->title]);
+    }
+
+    /**
+     * Проверить, что при обновлении без unit валидация не проходит
+     *
+     * @return void
+     */
+    public function test_update_requires_unit()
+    {
+        $product = Product::factory()->create();
+
+        $response = $this->put(
+            route('products.update', $product),
+            [
+                'title' => $product->title,
+            ]
+        );
+
+        $response->assertSessionHasErrors('unit');
+    }
+
+    /**
+     * Проверить, что при обновлении недопустимое значение unit
+     * отклоняется валидацией
+     *
+     * @return void
+     */
+    public function test_update_rejects_invalid_unit()
+    {
+        $product = Product::factory()->create();
+
+        $response = $this->put(
+            route('products.update', $product),
+            [
+                'title' => $product->title,
+                'unit' => 'random_string',
+            ]
+        );
+
+        $response->assertSessionHasErrors('unit');
     }
 
     /**

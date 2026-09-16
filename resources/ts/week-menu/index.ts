@@ -74,7 +74,6 @@ class WeekMenuIndexPage {
         // кнопка получения списка продуктов
         const shoppingListButton = document.querySelector<HTMLElement>('.js-shopping-list-btn');
         const panel = document.querySelector('.js-shopping-list-panel');
-        const closeBtn = document.querySelector('.js-shopping-list-close');
         const backdrop = document.querySelector('.js-shopping-list-backdrop');
 
         if (shoppingListButton !== null) {
@@ -87,6 +86,8 @@ class WeekMenuIndexPage {
                             panel.innerHTML = html;
                         }
                         this.togglePanel();
+
+                        const closeBtn = document.querySelector('.js-shopping-list-close');
 
                         // кнопка сокрытия боковой панели
                         if (closeBtn!==null) {

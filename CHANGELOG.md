@@ -48,8 +48,10 @@
 - Сидер тестового меню на неделю (`MenuDaySeeder`).
 - Фича-тесты на меню на неделю (`tests/Feature/WeekMenuTest.php`).
 - Список покупок: маршрут `week-menu.shopping-list` и метод
-  `WeekMenuController::shoppingList()`, агрегирующий уникальные
-  продукты по рецептам всех дней выбранной недели.
+  `WeekMenuController::shoppingList()`, суммирующий количество
+  каждого продукта по всем рецептам и дням выбранной недели с
+  пересчётом на кол-во порций (`quantity / recipe->servings *
+  menu_day_recipe->servings`, округление).
 - Партиал `week-menu/shopping-list.blade.php` и боковая панель
   (офканвас на Tailwind) с загрузкой содержимого через `fetch`
   по кнопке «Список покупок» на странице меню.

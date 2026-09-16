@@ -100,12 +100,22 @@ class WeekMenuController extends Controller
             ->with('recipes.products')
             ->get();
 
-        $products = $menuDays->flatMap(fn ($menuDay) => $menuDay->recipes)
-            ->flatMap(fn ($recipe) => $recipe->products)
-            ->unique('id')
-            ->sortBy('title');
+        $result = $menuDays->flatMap(fn ($menuDay) => $menuDay->recipes)
+            ->flatMap(fn ($recipe) => $recipe->products->map(fn ($product) => [
+                'product_id' => $product->id,
+                'title' => $product->title,
+                'unit' => $product->unit,
+                'quantity' => round(($product->pivot->quantity / $recipe->servings) * $recipe->pivot->servings),
+            ]))
+            ->groupBy('product_id')
+            ->map(fn ($items) => [
+                'quantity' => $items->sum('quantity'),
+                'title' => $items->first()['title'],
+                'unit' => $items->first()['unit'],
+            ]);
+        ;
 
-        return view('week-menu.shopping-list', compact('products'));
+        return view('week-menu.shopping-list', compact('result'));
     }
 
     /**

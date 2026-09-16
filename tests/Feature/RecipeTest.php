@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Unit;
 use App\Models\Product;
 use App\Models\Recipe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,7 +82,7 @@ class RecipeTest extends TestCase
 
         $response->assertSee('name="title"', false);
 
-        $response->assertSee('name="product_ids[]', false);
+        $response->assertSee('name="products"', false);
 
         foreach ($products as $product) {
             $response->assertSee($product->title);
@@ -99,16 +100,34 @@ class RecipeTest extends TestCase
 
         $response = $this->post(
             route('recipes.store'),
-            ['title' => 'Test Recipe', 'product_ids' => [$product->id]],
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode([
+                    [
+                        'product_id' => $product->id,
+                        'unit' => $product->unit->value,
+                        'quantity' => 1,
+                        'title' => $product->title,
+                    ]
+                ]),
+                'servings' => 2,
+            ],
         );
 
         $response->assertRedirect(route('recipes.index'));
 
         $recipe = Recipe::where('title', 'Test Recipe')->firstOrFail();
 
-        $this->assertDatabaseHas('recipes', ['title' => 'Test Recipe']);
+        $this->assertDatabaseHas('recipes', [
+            'title' => 'Test Recipe',
+            'servings' => 2,
+        ]);
 
-        $this->assertDatabaseHas('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
+        $this->assertDatabaseHas('product_recipe', [
+            'product_id' => $product->id,
+            'recipe_id' => $recipe->id,
+            'quantity' => 1,
+        ]);
     }
 
     /**
@@ -121,11 +140,19 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(3)->create();
 
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'quantity' => 1,
+            'title' => $product->title,
+        ]);
+
         $response = $this->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
-                'product_ids' => $products->pluck('id')->all(),
+                'products' => json_encode($productsData),
+                'servings' => 2,
             ],
         );
 
@@ -134,7 +161,11 @@ class RecipeTest extends TestCase
         $recipe = Recipe::where('title', 'Test Recipe')->firstOrFail();
 
         foreach ($products as $product) {
-            $this->assertDatabaseHas('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $product->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 1,
+            ]);
         }
     }
 
@@ -221,17 +252,21 @@ class RecipeTest extends TestCase
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
+                'servings' => 2,
             ],
         );
 
-        $response->assertSessionHasErrors('product_ids');
+        $response->assertSessionHasErrors('products');
 
         $this->assertDatabaseCount('recipes', 0);
     }
 
     /**
-     * Убедиться, что пустой массив product_ids отклоняется правилом min:1,
-     * а не просто required
+     * Убедиться, что пустой массив products отклоняется валидацией
+     * (для required пустой массив тоже считается непройденным, отдельного
+     * сообщения от min:1 тут не появляется — по факту дублирует
+     * test_store_requires_product_ids на уровне правил, но проверяет
+     * другой payload: products передан, но пуст, а не отсутствует вовсе)
      *
      * @return void
      *
@@ -244,16 +279,17 @@ class RecipeTest extends TestCase
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
-                'product_ids' => [],
+                'products' => json_encode([]),
+                'servings' => 2,
             ],
         );
 
-        $response->assertSessionHasErrors('product_ids');
+        $response->assertSessionHasErrors('products');
 
-        $messages = session('errors')->get('product_ids');
+        $messages = session('errors')->get('products');
 
         $this->assertTrue(
-            collect($messages)->contains(fn ($message) => str_contains($message, 'обязательно для заполнения')),
+            collect($messages)->contains(fn ($message) => str_contains($message, 'Необходимо добавить хотя бы один продукт')),
         );
     }
 
@@ -272,13 +308,20 @@ class RecipeTest extends TestCase
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
-                'product_ids' => [1],
+                'products' => json_encode([
+                    [
+                        'product_id' => 1,
+                        'quantity' => 1,
+                        'title' => 'Test Product',
+                        'unit' => Unit::Gram->value,
+                    ]
+                ]),
             ],
         );
 
-        $response->assertSessionHasErrors('product_ids.0');
+        $response->assertSessionHasErrors('products.0.product_id');
 
-        $messages = session('errors')->get('product_ids.0');
+        $messages = session('errors')->get('products.0.product_id');
 
         $this->assertTrue(
             collect($messages)->contains(
@@ -286,6 +329,160 @@ class RecipeTest extends TestCase
                     && str_contains($message, 'недопустимо'),
             ),
         );
+    }
+
+    /**
+     * Проверить, что quantity каждого продукта сохраняется в
+     * pivot-таблице product_recipe
+     *
+     * @return void
+     */
+    public function test_store_saves_product_quantity()
+    {
+        $products = Product::factory()->count(3)->create();
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'quantity' => 1,
+            'title' => $product->title,
+        ]);
+
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 2,
+            ],
+        );
+
+        $response->assertRedirect(route('recipes.index'));
+
+        $recipe = Recipe::where('title', 'Test Recipe')->firstOrFail();
+
+        foreach ($productsData as $productData) {
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $productData['product_id'],
+                'recipe_id' => $recipe->id,
+                'quantity' => $productData['quantity'],
+            ]);
+        }
+    }
+
+    /**
+     * Проверить, что без quantity у продукта рецепт не создаётся
+     *
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    public function test_store_requires_product_quantity()
+    {
+        $products = Product::factory()->count(3)->create();
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+        ]);
+
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 2,
+            ],
+        );
+
+        $response->assertSessionHasErrors('products.0.quantity');
+        $response->assertSessionHasErrors('products.1.quantity');
+        $response->assertSessionHasErrors('products.2.quantity');
+
+        $messages = session('errors')->get('products.0.quantity');
+
+        $this->assertTrue(
+            collect($messages)->contains(fn ($message) => str_contains($message, 'Введите количество')),
+        );
+
+        $this->assertDatabaseCount('recipes', 0);
+    }
+
+    /**
+     * Проверить, что нецелое значение quantity отклоняется валидацией
+     *
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    public function test_store_rejects_non_integer_product_quantity()
+    {
+        $products = Product::factory()->count(3)->create();
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 'string',
+        ]);
+
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 2,
+            ],
+        );
+
+        $response->assertSessionHasErrors('products.0.quantity');
+        $response->assertSessionHasErrors('products.1.quantity');
+        $response->assertSessionHasErrors('products.2.quantity');
+
+        $messages = session('errors')->get('products.0.quantity');
+
+        $this->assertTrue(
+            collect($messages)->contains(fn ($message) => str_contains($message, 'Количество должно быть целым числом')),
+        );
+
+        $this->assertDatabaseCount('recipes', 0);
+    }
+
+    /**
+     * Проверить, что quantity меньше 1 отклоняется правилом min:1
+     *
+     * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
+    public function test_store_rejects_product_quantity_below_min()
+    {
+        $products = Product::factory()->count(3)->create();
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 0,
+        ]);
+
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 2,
+            ],
+        );
+
+        $response->assertSessionHasErrors('products.0.quantity');
+        $response->assertSessionHasErrors('products.1.quantity');
+        $response->assertSessionHasErrors('products.2.quantity');
+
+        $messages = session('errors')->get('products.0.quantity');
+
+        $this->assertTrue(
+            collect($messages)->contains(fn ($message) => str_contains($message, 'Количество должно быть не менее')),
+        );
+
+        $this->assertDatabaseCount('recipes', 0);
     }
 
     /**
@@ -299,24 +496,28 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
         $otherProduct = Product::factory()->create();
 
-        $recipe = Recipe::factory()
-            ->hasAttached($products)
-            ->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
+        );
 
         $response = $this->get(route('recipes.edit', $recipe));
 
-        $content = $response->getContent();
+        preg_match(
+            "/x-data=\"recipeForm\(JSON\.parse\('(.*?)'\)/s",
+            $response->getContent(),
+            $matches,
+        );
+
+        $initialProducts = json_decode(json_decode('"'.$matches[1].'"'), true);
+
+        $initialProductIds = collect($initialProducts)->pluck('product_id');
 
         foreach ($products as $product) {
-            preg_match('/<option\s+value="'.$product->id.'"[^>]*>/', $content, $matches);
-
-            $this->assertNotEmpty($matches);
-            $this->assertStringContainsString('selected', $matches[0]);
+            $this->assertContains($product->id, $initialProductIds);
         }
 
-        preg_match('/<option\s+value="'.$otherProduct->id.'"[^>]*>/', $content, $matches);
-
-        $this->assertStringNotContainsString('selected', $matches[0]);
+        $this->assertNotContains($otherProduct->id, $initialProductIds);
     }
 
     /**
@@ -326,11 +527,11 @@ class RecipeTest extends TestCase
      */
     public function test_update_changes_title()
     {
-        $products = Product::factory()->count(1)->create();
-
-        $recipe = Recipe::factory()
-            ->hasAttached(Product::inRandomOrder()->take(1)->get())
-            ->create();
+        $product = Product::factory()->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            [$product->id => ['quantity' => 100]],
+        );
 
         $oldTitle = $recipe->title;
 
@@ -338,7 +539,15 @@ class RecipeTest extends TestCase
             route('recipes.update', $recipe),
             [
                 'title' => 'Test Recipe',
-                'product_ids' => $products->pluck('id')->all(),
+                'products' => json_encode([
+                    [
+                        'product_id' => $product->id,
+                        'quantity' => 100,
+                        'title' => $product->title,
+                        'unit' => $product->unit->value,
+                    ],
+                ]),
+                'servings' => $recipe->servings,
             ]
         );
 
@@ -358,16 +567,24 @@ class RecipeTest extends TestCase
     public function test_update_without_changing_title_does_not_fail()
     {
         $products = Product::factory()->count(3)->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
+        );
 
-        $recipe = Recipe::factory()
-            ->hasAttached($products)
-            ->create();
+        $productsData = $products->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'quantity' => 100,
+            'title' => $product->title,
+        ]);
 
         $response = $this->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
-                'product_ids' => $products->pluck('id')->all(),
+                'products' => json_encode($productsData),
+                'servings' => $recipe->servings,
             ],
         );
 
@@ -416,30 +633,51 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(4)->create();
         $otherProducts = Product::factory()->count(2)->create();
 
-        $recipe = Recipe::factory()
-            ->hasAttached($products)
-            ->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
+        );
 
         foreach ($products as $product) {
-            $this->assertDatabaseHas('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $product->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 100,
+            ]);
         }
+
+        $otherProductsData = $otherProducts->map(fn ($otherProduct) => [
+            'product_id' => $otherProduct->id,
+            'unit' => $otherProduct->unit->value,
+            'quantity' => 1,
+            'title' => $otherProduct->title,
+        ]);
 
         $response = $this->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
-                'product_ids' => $otherProducts->pluck('id')->all(),
+                'products' => json_encode($otherProductsData),
+                'servings' => $recipe->servings,
             ]
         );
 
         $response->assertRedirect(route('recipes.index'));
 
         foreach ($otherProducts as $product) {
-            $this->assertDatabaseHas('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $product->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 1,
+            ]);
         }
 
         foreach ($products as $product) {
-            $this->assertDatabaseMissing('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
+            $this->assertDatabaseMissing('product_recipe', [
+                'product_id' => $product->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 100,
+            ]);
         }
     }
 
@@ -451,10 +689,10 @@ class RecipeTest extends TestCase
     public function test_update_requires_product_ids()
     {
         $products = Product::factory()->count(3)->create();
-
-        $recipe = Recipe::factory()
-            ->hasAttached($products)
-            ->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
+        );
 
         $response = $this->put(
             route('recipes.update', $recipe),
@@ -463,7 +701,97 @@ class RecipeTest extends TestCase
             ],
         );
 
-        $response->assertSessionHasErrors('product_ids');
+        $response->assertSessionHasErrors('products');
+    }
+
+    /**
+     * Проверить, что при обновлении рецепта quantity в pivot-таблице
+     * product_recipe меняется на новое значение
+     *
+     * @return void
+     */
+    public function test_update_syncs_product_quantity()
+    {
+        $products = Product::factory()->count(3)->create();
+        $otherProducts = Product::factory()->count(2)->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 1]])
+        );
+
+        foreach ($products as $product) {
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $product->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 1,
+            ]);
+        }
+
+        $otherProductsData = $otherProducts->map(fn ($otherProduct) => [
+            'product_id' => $otherProduct->id,
+            'quantity' => 2,
+            'title' => $otherProduct->title,
+            'unit' => $otherProduct->unit,
+        ]);
+
+        $response = $this->put(
+            route('recipes.update', $recipe),
+            [
+                'title' => $recipe->title,
+                'products' => json_encode($otherProductsData),
+                'servings' => $recipe->servings,
+            ],
+        );
+
+        $response->assertRedirect(route('recipes.index'));
+
+        foreach ($otherProducts as $otherProduct) {
+            $this->assertDatabaseHas('product_recipe', [
+                'product_id' => $otherProduct->id,
+                'recipe_id' => $recipe->id,
+                'quantity' => 2,
+            ]);
+        }
+    }
+
+    /**
+     * Проверить, что при обновлении без quantity у продукта
+     * валидация не проходит
+     *
+     * @return void
+     */
+    public function test_update_requires_product_quantity()
+    {
+        $products = Product::factory()->count(3)->create();
+        $otherProducts = Product::factory()->count(2)->create();
+        $recipe = Recipe::factory()->create();
+        $recipe->products()->attach(
+            $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 1]])
+        );
+
+        $otherProductsData = $otherProducts->map(fn ($otherProduct) => [
+            'product_id' => $otherProduct->id,
+            'title' => $otherProduct->title,
+            'unit' => $otherProduct->unit,
+        ]);
+
+        $response = $this->put(
+            route('recipes.update', $recipe),
+            [
+                'title' => $recipe->title,
+                'products' => json_encode($otherProductsData),
+                'servings' => $recipe->servings,
+            ],
+        );
+
+        $response->assertSessionHasErrors('products.0.quantity');
+        $response->assertSessionHasErrors('products.1.quantity');
+
+        $messages = session('errors')->get('products.0.quantity');
+
+        $this->assertTrue(
+            collect($messages)->contains(fn ($message) => str_contains($message, 'Введите количество')),
+        );
     }
 
     /**
@@ -507,5 +835,191 @@ class RecipeTest extends TestCase
         foreach ($products as $product) {
             $this->assertDatabaseMissing('product_recipe', ['product_id' => $product->id, 'recipe_id' => $recipe->id]);
         }
+    }
+
+    /**
+     * Проверить, что `servings` сохраняется в `recipes` при создании
+     * рецепта
+     *
+     * @return void
+     */
+    public function test_store_saves_recipe_servings()
+    {
+        // создать продукты
+        $products = Product::factory()->count(3)->create();
+        // конвертировать в данные
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 1,
+        ]);
+
+        // отправить запрос на создание рецепта
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 2,
+            ],
+        );
+
+        // убедиться, что все ок и произошел редирект
+        $response->assertRedirect(route('recipes.index'));
+
+        // убедиться, что `servings` сохраняется в `recipes`
+        $this->assertDatabaseHas('recipes', [
+            'title' => 'Test Recipe',
+            'servings' => 2,
+        ]);
+    }
+
+    /**
+     * Проверить, что без `servings` запрос на создание рецепта
+     * отклоняется валидацией
+     *
+     * @return void
+     */
+    public function test_store_requires_servings()
+    {
+        // создать продукты
+        $products = Product::factory()->count(3)->create();
+        // конвертировать в данные
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 1,
+        ]);
+
+        // отправить запрос на создание рецепта, но без servings
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+            ],
+        );
+
+        // убедиться, что есть ошибка
+        $response->assertSessionHasErrors('servings');
+        // и что строка не попала в БД
+        $this->assertDatabaseCount('recipes', 0);
+    }
+
+    /**
+     * Проверить, что `servings < 1` отклоняется валидацией при
+     * создании рецепта
+     *
+     * @return void
+     */
+    public function test_store_rejects_servings_below_min()
+    {
+        // создать продукты
+        $products = Product::factory()->count(3)->create();
+        // конвертировать в данные
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 1,
+        ]);
+
+        // отправить запрос на создание рецепта
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 0,
+            ],
+        );
+
+        // убедиться, что есть ошибка
+        $response->assertSessionHasErrors('servings');
+        // и что строка не попала в БД
+        $this->assertDatabaseCount('recipes', 0);
+    }
+
+    /**
+     * Проверить, что `servings`, превышающий максимум (255),
+     * отклоняется валидацией при создании рецепта
+     *
+     * @return void
+     */
+    public function test_store_rejects_servings_above_max()
+    {
+        // создать продукты
+        $products = Product::factory()->count(3)->create();
+        // конвертировать в данные
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 1,
+        ]);
+
+        // отправить запрос на создание рецепта
+        $response = $this->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 256,
+            ],
+        );
+
+        // убедиться, что есть ошибка
+        $response->assertSessionHasErrors('servings');
+        // и что строка не попала в БД
+        $this->assertDatabaseCount('recipes', 0);
+    }
+
+    /**
+     * Проверить, что `servings` можно изменить при обновлении
+     * рецепта
+     *
+     * @return void
+     */
+    public function test_update_saves_recipe_servings()
+    {
+        // продукт
+        $product = Product::factory()->create();
+        $productData = [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'quantity' => 10,
+            'title' => $product->title,
+        ];
+        // рецепт
+        $recipe = Recipe::factory()->create(['servings' => 4]);
+        // прикрепить продукт к рецепту
+        $recipe->products()->attach([
+            $product->id => ['quantity' => 10],
+        ]);
+
+        // проверить, что servings был 4
+        $this->assertDatabaseHas('recipes', [
+            'title' => $recipe->title,
+            'servings' => 4,
+        ]);
+
+        $response = $this->put(
+            route('recipes.update', $recipe),
+            [
+                'title' => $recipe->title,
+                'products' => json_encode([$productData]),
+                'servings' => 5,
+            ]
+        );
+
+        // убедиться, что все ок и произошел редирект
+        $response->assertRedirect(route('recipes.index'));
+        // проверить, что servings изменился
+        $this->assertDatabaseHas('recipes', [
+            'title' => $recipe->title,
+            'servings' => 5,
+        ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\MenuDayFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
@@ -36,5 +37,15 @@ class MenuDay extends Model
     {
         return $this->belongsToMany(Recipe::class)
             ->withPivot('servings');
+    }
+
+    /**
+     * Получить домохозяйство, которое связано с днем меню
+     *
+     * @return BelongsTo
+     */
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class);
     }
 }

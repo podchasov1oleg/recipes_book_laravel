@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Household;
 use App\Models\MenuDay;
 use App\Models\Recipe;
 use Carbon\Carbon;
@@ -15,6 +16,8 @@ class MenuDaySeeder extends Seeder
      */
     public function run(): void
     {
+        $household = Household::first();
+
         // создать дни текущей недели
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
         $weekDays = [];
@@ -27,6 +30,7 @@ class MenuDaySeeder extends Seeder
 
         foreach ($collection as $item) {
             MenuDay::factory()
+                ->for($household)
                 ->hasAttached(
                     Recipe::inRandomOrder()->take(rand(1, 3))->get(),
                     ['servings' => rand(1, 3)],

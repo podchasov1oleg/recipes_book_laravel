@@ -48,6 +48,16 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+
+    mailpit:
+        image: axllent/mailpit
+        ports:
+            - '8025:8025'
+            - '1025:1025'
+        restart: unless-stopped
+        networks:
+            - sail
+
 networks:
     sail:
         driver: bridge

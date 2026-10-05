@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Household;
 use App\Models\MenuDay;
 use App\Models\Product;
 use App\Models\Recipe;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -15,8 +15,6 @@ use Tests\TestCase;
  */
 class WeekMenuTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * Проверить, что без параметра monday отображается текущая
      * неделя (пн-вс), содержащая сегодняшнюю дату
@@ -25,7 +23,7 @@ class WeekMenuTest extends TestCase
      */
     public function test_index_displays_current_week_by_default()
     {
-        $response = $this->get('/week-menu');
+        $response = $this->actingAs($this->user)->get('/week-menu');
 
         $response->assertStatus(200);
 
@@ -50,7 +48,7 @@ class WeekMenuTest extends TestCase
     {
         $param = '2026-08-10';
 
-        $response = $this->get('/week-menu?monday='.$param);
+        $response = $this->actingAs($this->user)->get('/week-menu?monday='.$param);
 
         $response->assertStatus(200);
 
@@ -74,12 +72,12 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $recipe = Recipe::factory()->create();
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
 
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday='.$monday);
+        $response = $this->actingAs($this->user)->get('/week-menu?monday='.$monday);
 
         $response->assertStatus(200);
 
@@ -94,7 +92,7 @@ class WeekMenuTest extends TestCase
      */
     public function test_index_displays_empty_state_for_day_without_recipes()
     {
-        $response = $this->get('/week-menu');
+        $response = $this->actingAs($this->user)->get('/week-menu');
 
         $response->assertStatus(200);
         $response->assertSee('Пока ничего не запланировано');
@@ -111,11 +109,11 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $recipe = Recipe::factory()->create();
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday='.$monday);
+        $response = $this->actingAs($this->user)->get('/week-menu?monday='.$monday);
 
         $optionHtml = '<option value="'.$recipe->id.'">';
 
@@ -133,14 +131,14 @@ class WeekMenuTest extends TestCase
         $productsCount = 3;
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $products = Product::factory()->count($productsCount)->create();
         $recipe->products()->attach($products);
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get('/week-menu?monday='.$monday);
+        $response = $this->actingAs($this->user)->get('/week-menu?monday='.$monday);
 
         $response->assertSee($productsCount.' ингредиента');
     }
@@ -153,10 +151,10 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_creates_menu_day_when_missing()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -166,7 +164,7 @@ class WeekMenuTest extends TestCase
 
         $response->assertRedirect(route('week-menu'));
 
-        $this->assertDatabaseHas('menu_days', ['day' => $day]);
+        $this->assertDatabaseHas('menu_days', ['day' => $day, 'household_id' => $this->user->household->id]);
     }
 
     /**
@@ -177,10 +175,10 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_attaches_recipes_to_day()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -201,10 +199,10 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_attaches_multiple_recipes_at_once()
     {
-        $recipes = Recipe::factory()->count(3)->create();
+        $recipes = Recipe::factory()->for($this->user->household)->count(3)->create();
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -232,14 +230,14 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $menuDay->recipes()->attach($recipe);
 
-        $otherRecipe = Recipe::factory()->create();
+        $otherRecipe = Recipe::factory()->for($this->user->household)->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $monday->format('Y-m-d'),
@@ -260,9 +258,9 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_requires_day()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => null,
@@ -281,10 +279,10 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_rejects_invalid_day_format()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('d.m.Y');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -304,7 +302,7 @@ class WeekMenuTest extends TestCase
     {
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -325,7 +323,7 @@ class WeekMenuTest extends TestCase
     {
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -346,7 +344,7 @@ class WeekMenuTest extends TestCase
     {
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -365,10 +363,10 @@ class WeekMenuTest extends TestCase
      */
     public function test_store_redirects_with_success_message()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             '/week-menu',
             [
                 'day' => $day,
@@ -392,13 +390,13 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $recipe = Recipe::factory()->create();
-        $otherRecipe = Recipe::factory()->create();
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
+        $otherRecipe = Recipe::factory()->for($this->user->household)->create();
 
         $menuDay->recipes()->attach([$recipe, $otherRecipe]);
 
-        $response = $this->delete(
+        $response = $this->actingAs($this->user)->delete(
             route(
                 'week-menu.destroy',
                 [
@@ -431,12 +429,12 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $recipe = Recipe::factory()->create();
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
 
         $menuDay->recipes()->attach([$recipe]);
 
-        $response = $this->delete(
+        $this->actingAs($this->user)->delete(
             route(
                 'week-menu.destroy',
                 [
@@ -460,15 +458,15 @@ class WeekMenuTest extends TestCase
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
         $tuesday = $monday->copy()->addDay();
 
-        $mondayMenuDay = MenuDay::factory()->create(['day' => $monday]);
-        $tuesdayMenuDay = MenuDay::factory()->create(['day' => $tuesday]);
-        $recipe = Recipe::factory()->create();
-        $otherRecipe = Recipe::factory()->create();
+        $mondayMenuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $tuesdayMenuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $tuesday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
+        $otherRecipe = Recipe::factory()->for($this->user->household)->create();
 
         $mondayMenuDay->recipes()->attach([$recipe]);
         $tuesdayMenuDay->recipes()->attach([$otherRecipe]);
 
-        $this->delete(
+        $this->actingAs($this->user)->delete(
             route(
                 'week-menu.destroy',
                 [
@@ -499,12 +497,12 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $recipe = Recipe::factory()->create();
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
 
         $menuDay->recipes()->attach([$recipe]);
 
-        $response = $this->delete(
+        $response = $this->actingAs($this->user)->delete(
             route(
                 'week-menu.destroy',
                 [
@@ -528,14 +526,14 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $products = Product::factory()->count(2)->create();
         $recipe->products()->attach($products);
         $menuDay->recipes()->attach($recipe);
 
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -562,20 +560,20 @@ class WeekMenuTest extends TestCase
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
         $prevMonday = $monday->copy()->subWeek();
 
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
-        $prevMenuDay = MenuDay::factory()->create(['day' => $prevMonday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $prevMenuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $prevMonday]);
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $products = Product::factory()->count(2)->create();
         $recipe->products()->attach($products);
         $menuDay->recipes()->attach($recipe);
 
-        $otherRecipe = Recipe::factory()->create();
+        $otherRecipe = Recipe::factory()->for($this->user->household)->create();
         $otherProducts = Product::factory()->count(2)->create();
         $otherRecipe->products()->attach($otherProducts);
         $prevMenuDay->recipes()->attach($otherRecipe);
 
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -604,10 +602,10 @@ class WeekMenuTest extends TestCase
     public function test_shopping_list_deduplicates_product_shared_between_recipes()
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
-        $recipe = Recipe::factory()->create(['servings' => 2]);
-        $otherRecipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 2]);
+        $otherRecipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
 
         $product1 = Product::factory()->create();
         $product2 = Product::factory()->create();
@@ -627,7 +625,7 @@ class WeekMenuTest extends TestCase
             $otherRecipe->id => ['servings' => 4],
         ]);
 
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -654,9 +652,9 @@ class WeekMenuTest extends TestCase
     {
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
 
-        MenuDay::factory()->create(['day' => $monday]);
+        MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -674,19 +672,19 @@ class WeekMenuTest extends TestCase
     public function test_shopping_list_scales_quantity_by_recipe_and_day_servings()
     {
         $product = Product::factory()->create();
-        $recipe = Recipe::factory()->create(['servings' => 2]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 2]);
         $recipe->products()->attach([
             $product->id => ['quantity' => 100],
         ]);
 
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         $menuDay->recipes()->attach([
             $recipe->id => ['servings' => 4],
         ]);
 
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -710,9 +708,9 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт 1
-        $recipe1 = Recipe::factory()->create(['servings' => 2]);
+        $recipe1 = Recipe::factory()->for($this->user->household)->create(['servings' => 2]);
         // рецепт 2
-        $recipe2 = Recipe::factory()->create(['servings' => 4]);
+        $recipe2 = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецептам
         $recipe1->products()->attach([
             $product->id => ['quantity' => 10],
@@ -723,10 +721,10 @@ class WeekMenuTest extends TestCase
 
         // создать дни меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $tuesday = Carbon::now()->startOfWeek(CarbonInterface::TUESDAY);
+        $tuesday = $monday->copy()->addDay();
 
-        $menuDay1 = MenuDay::factory()->create(['day' => $monday]);
-        $menuDay2 = MenuDay::factory()->create(['day' => $tuesday]);
+        $menuDay1 = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $menuDay2 = MenuDay::factory()->for($this->user->household)->create(['day' => $tuesday]);
 
         // прикрепить рецепты
         $menuDay1->recipes()->attach([
@@ -737,7 +735,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на получение списка продуктов
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -761,7 +759,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 2]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 2]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -769,10 +767,10 @@ class WeekMenuTest extends TestCase
 
         // создать дни меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $tuesday = Carbon::now()->startOfWeek(CarbonInterface::TUESDAY);
+        $tuesday = $monday->copy()->addDay();
 
-        $menuDay1 = MenuDay::factory()->create(['day' => $monday]);
-        $menuDay2 = MenuDay::factory()->create(['day' => $tuesday]);
+        $menuDay1 = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $menuDay2 = MenuDay::factory()->for($this->user->household)->create(['day' => $tuesday]);
 
         // прикрепить рецепты
         $menuDay1->recipes()->attach([
@@ -783,7 +781,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на получение списка продуктов
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -806,7 +804,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -814,7 +812,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -822,7 +820,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на получение списка продуктов
-        $response = $this->get(
+        $response = $this->actingAs($this->user)->get(
             route(
                 'week-menu.shopping-list',
                 [
@@ -846,7 +844,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -854,7 +852,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -863,7 +861,7 @@ class WeekMenuTest extends TestCase
 
         // отправить запрос на увеличение servings
 
-        $response = $this->patch(
+        $response = $this->actingAs($this->user)->patch(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
             ['action' => 'inc']
         );
@@ -888,7 +886,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -896,7 +894,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -904,7 +902,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на уменьшение servings
-        $response = $this->patch(
+        $response = $this->actingAs($this->user)->patch(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
             ['action' => 'dec']
         );
@@ -929,7 +927,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -937,7 +935,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -945,7 +943,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на изменение servings
-        $response = $this->patch(
+        $response = $this->actingAs($this->user)->patch(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
             ['action' => 'inc']
         );
@@ -970,7 +968,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -978,7 +976,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -986,7 +984,7 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на изменение servings
-        $response = $this->patch(
+        $response = $this->actingAs($this->user)->patch(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
             ['action' => 'dec']
         );
@@ -1011,7 +1009,7 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
@@ -1019,7 +1017,7 @@ class WeekMenuTest extends TestCase
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -1028,7 +1026,7 @@ class WeekMenuTest extends TestCase
 
         // отправить запрос на изменение servings (как реальный axios.patch —
         // с X-Requested-With, чтобы Laravel вернул 422 JSON, а не редирект)
-        $response = $this->patchJson(
+        $response = $this->actingAs($this->user)->patchJson(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $recipe]),
             ['action' => 'some']
         );
@@ -1054,20 +1052,20 @@ class WeekMenuTest extends TestCase
         // продукт
         $product = Product::factory()->create();
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
+        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
         // прикрепить продукт к рецепту
         $recipe->products()->attach([
             $product->id => ['quantity' => 10],
         ]);
 
-        $unattachedRecipe = Recipe::factory()->create(['servings' => 6]);
+        $unattachedRecipe = Recipe::factory()->for($this->user->household)->create(['servings' => 6]);
         $unattachedRecipe->products()->attach([
             $product->id => ['quantity' => 20],
         ]);
 
         // создать день меню
         $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
-        $menuDay = MenuDay::factory()->create(['day' => $monday]);
+        $menuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
 
         // прикрепить рецепты
         $menuDay->recipes()->attach([
@@ -1075,11 +1073,217 @@ class WeekMenuTest extends TestCase
         ]);
 
         // отправить запрос на изменение servings
-        $response = $this->patch(
+        $response = $this->actingAs($this->user)->patch(
             route('week-menu.update-servings', ['menuDay' => $menuDay, 'recipe' => $unattachedRecipe]),
             ['action' => 'inc']
         );
 
         $response->assertNotFound();
+    }
+
+    /**
+     * Убедиться, что в меню недели нет дней и рецептов другого домохозяйства
+     *
+     * @return void
+     */
+    public function test_index_displays_only_own_household_menu()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $otherHousehold = Household::factory()->create();
+
+        $otherMenuDay = MenuDay::factory()->for($otherHousehold)->create(['day' => $monday]);
+        $otherRecipe = Recipe::factory()->for($otherHousehold)->create(['title' => 'Чужой рецепт в меню']);
+        $otherMenuDay->recipes()->attach($otherRecipe);
+
+        $response = $this->actingAs($this->user)->get('/week-menu?monday='.$monday->format('Y-m-d'));
+
+        $response->assertOk();
+        $response->assertDontSee('Чужой рецепт в меню');
+    }
+
+    /**
+     * Убедиться, что в выпадающем списке рецептов для дня только свои рецепты
+     *
+     * @return void
+     */
+    public function test_index_day_select_offers_only_own_household_recipes()
+    {
+        $ownRecipe = Recipe::factory()->for($this->user->household)->create(['title' => 'Свой рецепт']);
+        $otherRecipe = Recipe::factory()->for(Household::factory())->create(['title' => 'Чужой рецепт']);
+
+        $response = $this->actingAs($this->user)->get('/week-menu');
+
+        $response->assertOk();
+
+        // по одному option на каждый из 7 дней недели
+        $content = $response->getContent();
+        $this->assertSame(7, substr_count($content, '<option value="'.$ownRecipe->id.'">'));
+        $this->assertSame(0, substr_count($content, '<option value="'.$otherRecipe->id.'">'));
+    }
+
+    /**
+     * Убедиться, что два домохозяйства могут запланировать меню на одну дату
+     *
+     * @return void
+     */
+    public function test_store_allows_same_day_in_different_households()
+    {
+        $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
+        $otherMenuDay = MenuDay::factory()->for(Household::factory())->create(['day' => $day]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
+
+        $response = $this->actingAs($this->user)->post(
+            '/week-menu',
+            [
+                'day' => $day,
+                'recipe_ids' => [$recipe->id],
+            ]
+        );
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('week-menu'));
+
+        $this->assertDatabaseHas('menu_days', ['day' => $day, 'household_id' => $this->user->household->id]);
+        $this->assertDatabaseHas('menu_days', ['day' => $day, 'household_id' => $otherMenuDay->household_id]);
+        $this->assertDatabaseCount('menu_days', 2);
+    }
+
+    /**
+     * Убедиться, что рецепт не прицепляется к дню другого домохозяйства
+     * на ту же дату
+     *
+     * @return void
+     */
+    public function test_store_does_not_attach_to_other_household_menu_day()
+    {
+        $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
+        $otherMenuDay = MenuDay::factory()->for(Household::factory())->create(['day' => $day]);
+        $recipe = Recipe::factory()->for($this->user->household)->create();
+
+        $this->actingAs($this->user)->post(
+            '/week-menu',
+            [
+                'day' => $day,
+                'recipe_ids' => [$recipe->id],
+            ]
+        );
+
+        $ownMenuDay = $this->user->household->menuDays()->where('day', $day)->firstOrFail();
+
+        $this->assertDatabaseHas('menu_day_recipe', ['menu_day_id' => $ownMenuDay->id, 'recipe_id' => $recipe->id]);
+        $this->assertDatabaseMissing('menu_day_recipe', ['menu_day_id' => $otherMenuDay->id]);
+    }
+
+    /**
+     * Убедиться, что id чужого рецепта не проходит валидацию
+     *
+     * @return void
+     */
+    public function test_store_rejects_other_household_recipe_id()
+    {
+        $day = Carbon::now()->startOfWeek(CarbonInterface::MONDAY)->format('Y-m-d');
+        $otherRecipe = Recipe::factory()->for(Household::factory())->create();
+
+        $response = $this->actingAs($this->user)->post(
+            '/week-menu',
+            [
+                'day' => $day,
+                'recipe_ids' => [$otherRecipe->id],
+            ]
+        );
+
+        $response->assertSessionHasErrors('recipe_ids.0');
+
+        $this->assertDatabaseMissing('menu_day_recipe', ['recipe_id' => $otherRecipe->id]);
+    }
+
+    /**
+     * Убедиться, что открепить рецепт от чужого дня нельзя: 403, pivot не изменился
+     *
+     * @return void
+     */
+    public function test_destroy_forbidden_for_other_household_menu_day()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $otherHousehold = Household::factory()->create();
+
+        $otherMenuDay = MenuDay::factory()->for($otherHousehold)->create(['day' => $monday]);
+        $otherRecipe = Recipe::factory()->for($otherHousehold)->create();
+        $otherMenuDay->recipes()->attach($otherRecipe);
+
+        $response = $this->actingAs($this->user)->delete(
+            route('week-menu.destroy', ['menuDay' => $otherMenuDay, 'recipe' => $otherRecipe])
+        );
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas(
+            'menu_day_recipe',
+            ['menu_day_id' => $otherMenuDay->id, 'recipe_id' => $otherRecipe->id]
+        );
+    }
+
+    /**
+     * Убедиться, что изменить порции в чужом дне нельзя: 403, `servings` не изменились
+     *
+     * @return void
+     */
+    public function test_update_servings_forbidden_for_other_household_menu_day()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+        $otherHousehold = Household::factory()->create();
+
+        $otherMenuDay = MenuDay::factory()->for($otherHousehold)->create(['day' => $monday]);
+        $otherRecipe = Recipe::factory()->for($otherHousehold)->create();
+        $otherMenuDay->recipes()->attach([$otherRecipe->id => ['servings' => 2]]);
+
+        $response = $this->actingAs($this->user)->patch(
+            route('week-menu.update-servings', ['menuDay' => $otherMenuDay, 'recipe' => $otherRecipe]),
+            ['action' => 'inc']
+        );
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('menu_day_recipe', [
+            'menu_day_id' => $otherMenuDay->id,
+            'recipe_id' => $otherRecipe->id,
+            'servings' => 2,
+        ]);
+    }
+
+    /**
+     * Убедиться, что в список покупок не попадают продукты из меню
+     * другого домохозяйства
+     *
+     * @return void
+     */
+    public function test_shopping_list_includes_only_own_household_recipes()
+    {
+        $monday = Carbon::now()->startOfWeek(CarbonInterface::MONDAY);
+
+        // своё меню
+        $ownMenuDay = MenuDay::factory()->for($this->user->household)->create(['day' => $monday]);
+        $ownRecipe = Recipe::factory()->for($this->user->household)->create();
+        $ownRecipe->products()->attach([
+            Product::factory()->create(['title' => 'Свой продукт'])->id => ['quantity' => 1],
+        ]);
+        $ownMenuDay->recipes()->attach($ownRecipe);
+
+        // чужое меню на ту же неделю
+        $otherHousehold = Household::factory()->create();
+        $otherMenuDay = MenuDay::factory()->for($otherHousehold)->create(['day' => $monday]);
+        $otherRecipe = Recipe::factory()->for($otherHousehold)->create();
+        $otherRecipe->products()->attach([
+            Product::factory()->create(['title' => 'Чужой продукт'])->id => ['quantity' => 1],
+        ]);
+        $otherMenuDay->recipes()->attach($otherRecipe);
+
+        $response = $this->actingAs($this->user)->get(
+            route('week-menu.shopping-list', ['monday' => $monday->format('Y-m-d')])
+        );
+
+        $response->assertOk();
+        $response->assertSee('Свой продукт');
+        $response->assertDontSee('Чужой продукт');
     }
 }

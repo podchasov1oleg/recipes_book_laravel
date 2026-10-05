@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\Unit;
+use App\Models\Household;
 use App\Models\Product;
 use App\Models\Recipe;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\User;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Tests\TestCase;
@@ -15,8 +16,6 @@ use Tests\TestCase;
  */
 class RecipeTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * Проверить, что на странице списка рецептов виден созданный рецепт
      *
@@ -24,9 +23,9 @@ class RecipeTest extends TestCase
      */
     public function test_index_displays_recipes()
     {
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
 
-        $response = $this->get(route('recipes.index'));
+        $response = $this->actingAs($this->user)->get(route('recipes.index'));
 
         $response->assertStatus(200);
 
@@ -44,18 +43,21 @@ class RecipeTest extends TestCase
         Product::factory()->count(10)->create();
 
         Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(1)->get())
             ->create();
 
         Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(2)->get())
             ->create();
 
         Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(5)->get())
             ->create();
 
-        $response = $this->get(route('recipes.index'));
+        $response = $this->actingAs($this->user)->get(route('recipes.index'));
 
         $response->assertStatus(200);
 
@@ -76,7 +78,7 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(10)->create();
 
-        $response = $this->get(route('recipes.create'));
+        $response = $this->actingAs($this->user)->get(route('recipes.create'));
 
         $response->assertStatus(200);
 
@@ -98,7 +100,7 @@ class RecipeTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -121,6 +123,7 @@ class RecipeTest extends TestCase
         $this->assertDatabaseHas('recipes', [
             'title' => 'Test Recipe',
             'servings' => 2,
+            'household_id' => $this->user->household->id,
         ]);
 
         $this->assertDatabaseHas('product_recipe', [
@@ -147,7 +150,7 @@ class RecipeTest extends TestCase
             'title' => $product->title,
         ]);
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -178,7 +181,7 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(3)->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => '',
@@ -201,7 +204,7 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(3)->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => str_repeat('a', 256),
@@ -225,10 +228,11 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
 
         $recipe = Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(1)->get())
             ->create();
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => $recipe->title,
@@ -248,7 +252,7 @@ class RecipeTest extends TestCase
      */
     public function test_store_requires_product_ids()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -275,7 +279,7 @@ class RecipeTest extends TestCase
      */
     public function test_store_rejects_empty_product_ids_array()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -304,7 +308,7 @@ class RecipeTest extends TestCase
      */
     public function test_store_rejects_nonexistent_product_id()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -347,7 +351,7 @@ class RecipeTest extends TestCase
             'title' => $product->title,
         ]);
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -385,7 +389,7 @@ class RecipeTest extends TestCase
             'title' => $product->title,
         ]);
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -424,7 +428,7 @@ class RecipeTest extends TestCase
             'quantity' => 'string',
         ]);
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -463,7 +467,7 @@ class RecipeTest extends TestCase
             'quantity' => 0,
         ]);
 
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -496,12 +500,12 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
         $otherProduct = Product::factory()->create();
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
         );
 
-        $response = $this->get(route('recipes.edit', $recipe));
+        $response = $this->actingAs($this->user)->get(route('recipes.edit', $recipe));
 
         preg_match(
             "/x-data=\"recipeForm\(JSON\.parse\('(.*?)'\)/s",
@@ -528,14 +532,14 @@ class RecipeTest extends TestCase
     public function test_update_changes_title()
     {
         $product = Product::factory()->create();
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             [$product->id => ['quantity' => 100]],
         );
 
         $oldTitle = $recipe->title;
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => 'Test Recipe',
@@ -567,7 +571,7 @@ class RecipeTest extends TestCase
     public function test_update_without_changing_title_does_not_fail()
     {
         $products = Product::factory()->count(3)->create();
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
         );
@@ -579,7 +583,7 @@ class RecipeTest extends TestCase
             'title' => $product->title,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
@@ -604,14 +608,16 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
 
         $recipe = Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(1)->get())
             ->create();
 
         $otherRecipe = Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached(Product::inRandomOrder()->take(2)->get())
             ->create();
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $otherRecipe->title,
@@ -633,7 +639,7 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(4)->create();
         $otherProducts = Product::factory()->count(2)->create();
 
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
         );
@@ -653,7 +659,7 @@ class RecipeTest extends TestCase
             'title' => $otherProduct->title,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
@@ -689,12 +695,12 @@ class RecipeTest extends TestCase
     public function test_update_requires_product_ids()
     {
         $products = Product::factory()->count(3)->create();
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 100]])
         );
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => 'Test Recipe',
@@ -714,7 +720,7 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(3)->create();
         $otherProducts = Product::factory()->count(2)->create();
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 1]])
         );
@@ -734,7 +740,7 @@ class RecipeTest extends TestCase
             'unit' => $otherProduct->unit,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
@@ -764,7 +770,7 @@ class RecipeTest extends TestCase
     {
         $products = Product::factory()->count(3)->create();
         $otherProducts = Product::factory()->count(2)->create();
-        $recipe = Recipe::factory()->create();
+        $recipe = Recipe::factory()->for($this->user->household)->create();
         $recipe->products()->attach(
             $products->mapWithKeys(fn ($product) => [$product->id => ['quantity' => 1]])
         );
@@ -775,7 +781,7 @@ class RecipeTest extends TestCase
             'unit' => $otherProduct->unit,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
@@ -804,10 +810,12 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
 
         $recipe = Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached($products)
             ->create();
 
-        $response = $this->delete(route('recipes.destroy', $recipe));
+        $response = $this->actingAs($this->user)
+            ->delete(route('recipes.destroy', $recipe));
 
         $response->assertRedirect(route('recipes.index'));
 
@@ -826,10 +834,11 @@ class RecipeTest extends TestCase
         $products = Product::factory()->count(3)->create();
 
         $recipe = Recipe::factory()
+            ->for($this->user->household)
             ->hasAttached($products)
             ->create();
 
-        $response = $this->delete(route('recipes.destroy', $recipe));
+        $response = $this->actingAs($this->user)->delete(route('recipes.destroy', $recipe));
         $response->assertRedirect(route('recipes.index'));
 
         foreach ($products as $product) {
@@ -856,7 +865,7 @@ class RecipeTest extends TestCase
         ]);
 
         // отправить запрос на создание рецепта
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -894,7 +903,7 @@ class RecipeTest extends TestCase
         ]);
 
         // отправить запрос на создание рецепта, но без servings
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -927,7 +936,7 @@ class RecipeTest extends TestCase
         ]);
 
         // отправить запрос на создание рецепта
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -961,7 +970,7 @@ class RecipeTest extends TestCase
         ]);
 
         // отправить запрос на создание рецепта
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('recipes.store'),
             [
                 'title' => 'Test Recipe',
@@ -993,11 +1002,19 @@ class RecipeTest extends TestCase
             'title' => $product->title,
         ];
         // рецепт
-        $recipe = Recipe::factory()->create(['servings' => 4]);
-        // прикрепить продукт к рецепту
-        $recipe->products()->attach([
-            $product->id => ['quantity' => 10],
-        ]);
+//        $recipe = Recipe::factory()->for($this->user->household)->create(['servings' => 4]);
+//        // прикрепить продукт к рецепту
+//        $recipe->products()->attach([
+//            $product->id => ['quantity' => 10],
+//        ]);
+
+        $recipe = Recipe::factory()
+            ->for($this->user->household)
+            ->hasAttached(
+                $product,
+                ['quantity' => 10]
+            )
+            ->create(['servings' => 4]);
 
         // проверить, что servings был 4
         $this->assertDatabaseHas('recipes', [
@@ -1005,7 +1022,7 @@ class RecipeTest extends TestCase
             'servings' => 4,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('recipes.update', $recipe),
             [
                 'title' => $recipe->title,
@@ -1021,5 +1038,172 @@ class RecipeTest extends TestCase
             'title' => $recipe->title,
             'servings' => 5,
         ]);
+    }
+
+    /**
+     * Убедиться, что в списке нет рецептов другого домохозяйства
+     *
+     * @return void
+     */
+    public function test_index_displays_only_own_household_recipes()
+    {
+        $otherUser = User::factory()->create();
+        $otherHousehold = Household::factory()->for($otherUser)->create();
+
+        // названия задаются явно: короткое слово из фабрики может оказаться
+        // подстрокой tailwind-класса в разметке (`non` в `pointer-events-none`)
+        $otherRecipes = Recipe::factory()
+            ->for($otherHousehold)
+            ->hasAttached(Product::inRandomOrder()->take(2)->get())
+            ->count(3)
+            ->sequence(
+                ['title' => 'Other Household Recipe One'],
+                ['title' => 'Other Household Recipe Two'],
+                ['title' => 'Other Household Recipe Three'],
+            )
+            ->create();
+
+        $response = $this->actingAs($this->user)->get('/recipes');
+
+        $response->assertOk();
+
+        foreach ($otherRecipes as $otherRecipe) {
+            $response->assertDontSee($otherRecipe->title);
+        }
+    }
+
+    /**
+     * Убедиться, что новый рецепт получает `household_id` текущего пользователя
+     *
+     * @return void
+     */
+    public function test_store_assigns_recipe_to_user_household()
+    {
+        // создать продукты
+        $products = Product::factory()->count(3)->create();
+
+        // сделать из них данные
+        $productsData = collect($products)->map(fn ($product) => [
+            'product_id' => $product->id,
+            'unit' => $product->unit->value,
+            'title' => $product->title,
+            'quantity' => 1,
+        ]);
+
+        // создать рецепт
+        $this->actingAs($this->user)->post(
+            route('recipes.store'),
+            [
+                'title' => 'Test Recipe',
+                'products' => json_encode($productsData),
+                'servings' => 10,
+            ],
+        );
+
+        $this->assertDatabaseHas('recipes', [
+            'title' => 'Test Recipe',
+            'servings' => 10,
+            'household_id' => $this->user->household->id,
+        ]);
+    }
+
+    /**
+     * Убедиться, что у другого домохозяйства может быть рецепт с таким же названием
+     *
+     * @return void
+     */
+    public function test_store_allows_same_title_in_other_household()
+    {
+        Recipe::factory()->for(Household::factory())->create(['title' => 'Борщ']);
+        $product = Product::factory()->create();
+
+        $response = $this->actingAs($this->user)->post(
+            route('recipes.store'),
+            [
+                'title' => 'Борщ',
+                'products' => json_encode([[
+                    'product_id' => $product->id,
+                    'unit' => $product->unit->value,
+                    'title' => $product->title,
+                    'quantity' => 1,
+                ]]),
+                'servings' => 4,
+            ],
+        );
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('recipes.index'));
+
+        $this->assertDatabaseHas('recipes', [
+            'title' => 'Борщ',
+            'household_id' => $this->user->household->id,
+        ]);
+        $this->assertDatabaseCount('recipes', 2);
+    }
+
+    /**
+     * Убедиться, что форма редактирования чужого рецепта даёт 403
+     *
+     * @return void
+     */
+    public function test_edit_forbidden_for_other_household_recipe()
+    {
+        $otherRecipe = Recipe::factory()->for(Household::factory())->create();
+
+        $response = $this->actingAs($this->user)->get(route('recipes.edit', $otherRecipe));
+
+        $response->assertForbidden();
+    }
+
+    /**
+     * Убедиться, что изменить чужой рецепт нельзя: 403, данные в базе не изменились
+     *
+     * @return void
+     */
+    public function test_update_forbidden_for_other_household_recipe()
+    {
+        $otherRecipe = Recipe::factory()
+            ->for(Household::factory())
+            ->create(['title' => 'Чужой рецепт', 'servings' => 2]);
+        $product = Product::factory()->create();
+
+        $response = $this->actingAs($this->user)->put(
+            route('recipes.update', $otherRecipe),
+            [
+                'title' => 'Захваченный рецепт',
+                'products' => json_encode([[
+                    'product_id' => $product->id,
+                    'unit' => $product->unit->value,
+                    'title' => $product->title,
+                    'quantity' => 1,
+                ]]),
+                'servings' => 8,
+            ],
+        );
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('recipes', [
+            'id' => $otherRecipe->id,
+            'title' => 'Чужой рецепт',
+            'servings' => 2,
+        ]);
+        $this->assertDatabaseMissing('product_recipe', ['recipe_id' => $otherRecipe->id]);
+    }
+
+    /**
+     * Убедиться, что удалить чужой рецепт нельзя: 403, рецепт остался в базе
+     *
+     * @return void
+     */
+    public function test_destroy_forbidden_for_other_household_recipe()
+    {
+        $otherRecipe = Recipe::factory()->for(Household::factory())->create();
+
+        $response = $this->actingAs($this->user)->delete(route('recipes.destroy', $otherRecipe));
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('recipes', ['id' => $otherRecipe->id]);
     }
 }

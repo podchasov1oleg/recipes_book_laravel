@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\Unit;
 use App\Models\Product;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -12,8 +11,6 @@ use Tests\TestCase;
  */
 class ProductTest extends TestCase
 {
-    use RefreshDatabase;
-
     /**
      * Проверить, что мы видим продукты
      *
@@ -23,7 +20,7 @@ class ProductTest extends TestCase
     {
         $models = Product::factory()->count(3)->create();
 
-        $response = $this->get(route('products.index'));
+        $response = $this->actingAs($this->user)->get(route('products.index'));
 
         $response->assertStatus(200);
 
@@ -39,7 +36,7 @@ class ProductTest extends TestCase
      */
     public function test_create_displays_form()
     {
-        $response = $this->get(route('products.create'));
+        $response = $this->actingAs($this->user)->get(route('products.create'));
 
         $response->assertStatus(200);
 
@@ -53,7 +50,7 @@ class ProductTest extends TestCase
      */
     public function test_store_creates_product()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('products.store'),
             [
                 'title' => 'Test Product',
@@ -76,7 +73,7 @@ class ProductTest extends TestCase
      */
     public function test_store_requires_title()
     {
-        $response = $this->post(route('products.store'), ['title' => '']);
+        $response = $this->actingAs($this->user)->post(route('products.store'), ['title' => '']);
 
         $response->assertSessionHasErrors('title');
 
@@ -90,7 +87,8 @@ class ProductTest extends TestCase
      */
     public function test_store_title_max_length()
     {
-        $response = $this->post(route('products.store'), ['title' => str_repeat('a', 256)]);
+        $response = $this->actingAs($this->user)
+            ->post(route('products.store'), ['title' => str_repeat('a', 256)]);
 
         $response->assertSessionHasErrors('title');
 
@@ -106,7 +104,8 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->post(route('products.store'), ['title' => $product->title]);
+        $response = $this->actingAs($this->user)
+            ->post(route('products.store'), ['title' => $product->title]);
 
         $response->assertSessionHasErrors('title');
 
@@ -120,7 +119,7 @@ class ProductTest extends TestCase
      */
     public function test_store_requires_unit()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('products.store'), [
                 'title' => 'Test Product',
             ]);
@@ -137,7 +136,7 @@ class ProductTest extends TestCase
      */
     public function test_store_rejects_invalid_unit()
     {
-        $response = $this->post(
+        $response = $this->actingAs($this->user)->post(
             route('products.store'), [
             'title' => 'Test Product',
             'unit' => 'random_string',
@@ -157,7 +156,7 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->get(route('products.edit', $product));
+        $response = $this->actingAs($this->user)->get(route('products.edit', $product));
 
         $response->assertStatus(200);
 
@@ -176,7 +175,7 @@ class ProductTest extends TestCase
             'unit' => Unit::Gram->value,
         ]);
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('products.update', $product),
             [
                 'title' => 'Test Product',
@@ -201,7 +200,7 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('products.update', $product),
             [
                 'title' => $product->title,
@@ -223,7 +222,8 @@ class ProductTest extends TestCase
 
         $product2 = Product::factory()->create();
 
-        $response = $this->put(route('products.update', $product1), ['title' => $product2->title]);
+        $response = $this->actingAs($this->user)
+            ->put(route('products.update', $product1), ['title' => $product2->title]);
 
         $response->assertSessionHasErrors('title');
 
@@ -241,7 +241,7 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('products.update', $product),
             [
                 'title' => $product->title,
@@ -261,7 +261,7 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->put(
+        $response = $this->actingAs($this->user)->put(
             route('products.update', $product),
             [
                 'title' => $product->title,
@@ -281,7 +281,8 @@ class ProductTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $response = $this->delete(route('products.destroy', $product));
+        $response = $this->actingAs($this->user)
+            ->delete(route('products.destroy', $product));
 
         $response->assertRedirect(route('products.index'));
 

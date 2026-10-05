@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Пример тест кейса
+ */
 class ExampleTest extends TestCase
 {
     /**

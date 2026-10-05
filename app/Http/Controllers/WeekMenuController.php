@@ -119,11 +119,11 @@ class WeekMenuController extends Controller
                 'product_id' => $product->id,
                 'title' => $product->title,
                 'unit' => $product->unit,
-                'quantity' => round(($product->pivot->quantity / $recipe->servings) * $recipe->pivot->servings),
+                'quantity' => ($product->pivot->quantity / $recipe->servings) * $recipe->pivot->servings,
             ]))
             ->groupBy('product_id')
             ->map(fn ($items) => [
-                'quantity' => $items->sum('quantity'),
+                'quantity' => round($items->sum('quantity')),
                 'title' => $items->first()['title'],
                 'unit' => $items->first()['unit'],
             ]);

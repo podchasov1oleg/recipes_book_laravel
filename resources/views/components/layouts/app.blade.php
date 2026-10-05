@@ -1,5 +1,5 @@
 @props([
-    'maxWidth' => 'max-w-2xl',
+    'maxWidth' => 'max-w-3xl',
     'bgColor' => null,
 ])
 
@@ -15,7 +15,7 @@
     </head>
     <body class="bg-gray-100">
         <header class="shadow-md bg-white">
-            <nav class="container mx-auto flex justify-center py-3">
+            <nav class="container mx-auto flex justify-between py-3 max-w-3xl">
                 <ul class="flex items-center list-none pl-0 mb-0">
                     <li>
                         <a
@@ -32,6 +32,7 @@
                             @class([
                                 'btn-primary' => request()->routeIs('products.*'),
                                 'menu-link' => !request()->routeIs('products.*'),
+                                'pointer-events-none text-gray-400' => !auth()->check(),
                             ])
                         >Продукты</a>
                     </li>
@@ -41,6 +42,7 @@
                             @class([
                                 'btn-primary' => request()->routeIs('recipes.*'),
                                 'menu-link' => !request()->routeIs('recipes.*'),
+                                'pointer-events-none text-gray-400' => !auth()->check(),
                             ])
                         >Рецепты</a>
                     </li>
@@ -50,10 +52,59 @@
                             @class([
                                 'btn-primary' => request()->routeIs('week-menu'),
                                 'menu-link' => !request()->routeIs('week-menu'),
+                                'pointer-events-none text-gray-400' => !auth()->check(),
                             ])
                         >Меню на неделю</a>
                     </li>
                 </ul>
+
+                {{--неавторизованный пользователь--}}
+                @guest
+                    <ul class="flex items-center list-none pl-0 mb-0 gap-1">
+                        <li>
+                            <a
+                                href="{{route('login')}}"
+                                @class([
+                                    'btn-primary' => request()->routeIs('login'),
+                                    'menu-link' => !request()->routeIs('login'),
+                                ])
+                            >Войти</a>
+                        </li>
+                        <li>
+                            <a
+                                href="{{route('register')}}"
+                                @class([
+                                    'btn-primary' => request()->routeIs('register'),
+                                    'menu-link' => !request()->routeIs('register'),
+                                ])
+                            >Регистрация</a>
+                        </li>
+                    </ul>
+                @endguest
+
+                {{--авторизованный пользователь--}}
+                @auth
+                    <ul class="flex items-center list-none pl-0 mb-0 gap-2">
+                        @if(!auth()->user()->hasVerifiedEmail())
+                            <li>
+                                <a
+                                    href="{{route('verification.notice')}}"
+                                    class="decoration-0 text-blue-600 hover:text-blue-500 transition-colors duration-150 text-sm"
+                                >Подтвердите почту</a>
+                            </li>
+                        @endif
+                        <li>{{auth()->user()->name}}</li>
+                        <li>
+                            <form action="{{route('logout')}}" method="POST">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="btn-secondary cursor-pointer my-0"
+                                >Выйти</button>
+                            </form>
+                        </li>
+                    </ul>
+                @endauth
             </nav>
         </header>
 

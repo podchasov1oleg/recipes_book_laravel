@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,6 +40,11 @@ class AppServiceProvider extends ServiceProvider
                 ->flatten();
 
             $view->with(compact('quantityErrors', 'otherErrors'));
+        });
+
+        // задать дефолтные правила валидации пароля
+        Password::defaults(function () {
+            return Password::min(8);
         });
     }
 }

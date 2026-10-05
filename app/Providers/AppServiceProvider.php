@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -22,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (!app()->isProduction()) {
+            Model::preventLazyLoading();
+        }
+
         View::composer(['recipes.create', 'recipes.edit'], function ($view) {
             $errors = View::shared('errors');
 

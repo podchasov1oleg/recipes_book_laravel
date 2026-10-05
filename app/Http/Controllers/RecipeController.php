@@ -6,6 +6,8 @@ use App\Http\Requests\StoreRecipeRequest;
 use App\Http\Requests\UpdateRecipeRequest;
 use App\Models\Product;
 use App\Models\Recipe;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Контроллер страницы рецептов
@@ -17,7 +19,7 @@ class RecipeController extends Controller
      */
     public function index()
     {
-        $recipes = Recipe::withCount('products')->get();
+        $recipes = Auth::user()->household->recipes()->withCount('products')->get();
 
         return view('recipes.index', compact('recipes'));
     }
@@ -39,11 +41,10 @@ class RecipeController extends Controller
     {
         $validated = $request->validated();
 
-        $recipe = new Recipe($validated);
+        /** @var Recipe $recipe */
+        $recipe = Auth::user()->household->recipes()->create($validated);
 
-        $recipe->save();
-
-        $recipe->products()->sync(
+        $recipe->products()->attach(
             collect($validated['products'])->mapWithKeys(fn ($product) => [
                 $product['product_id'] => ['quantity' => $product['quantity']],
             ])
@@ -58,6 +59,8 @@ class RecipeController extends Controller
      */
     public function edit(Recipe $recipe)
     {
+        Gate::authorize('update', $recipe);
+
         $products = Product::all();
 
         return view('recipes.edit', compact('recipe', 'products'));
@@ -86,6 +89,8 @@ class RecipeController extends Controller
      */
     public function destroy(Recipe $recipe)
     {
+        Gate::authorize('delete', $recipe);
+
         $recipe->delete();
 
         return redirect()->route('recipes.index')

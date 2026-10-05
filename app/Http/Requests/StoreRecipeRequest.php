@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreRecipeRequest extends FormRequest
 {
@@ -23,7 +24,12 @@ class StoreRecipeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|max:255|unique:recipes,title',
+            'title' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('recipes', 'title')->where('household_id', $this->user()->household->id),
+            ],
             'products' => 'required|array|min:1',
             'products.*.product_id' => 'required|integer|exists:products,id',
             'products.*.quantity' => 'required|integer|min:1',

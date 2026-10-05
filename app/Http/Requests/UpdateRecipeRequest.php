@@ -13,7 +13,7 @@ class UpdateRecipeRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('update', $this->route('recipe'));
     }
 
     /**
@@ -27,7 +27,9 @@ class UpdateRecipeRequest extends FormRequest
             'title' => [
                 'required',
                 'max:255',
-                Rule::unique('recipes', 'title')->ignore($this->route('recipe')),
+                Rule::unique('recipes', 'title')
+                    ->where('household_id', $this->user()->household->id)
+                    ->ignore($this->route('recipe')),
             ],
             'products' => 'required|array|min:1',
             'products.*.product_id' => 'required|integer|exists:products,id',

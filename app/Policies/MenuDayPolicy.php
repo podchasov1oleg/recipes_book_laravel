@@ -2,13 +2,13 @@
 
 namespace App\Policies;
 
-use App\Models\Recipe;
+use App\Models\MenuDay;
 use App\Models\User;
 
 /**
- * todo придумать название на русском
+ *
  */
-class RecipePolicy
+class MenuDayPolicy
 {
     /**
      * Determine whether the user can view any models.
@@ -29,16 +29,16 @@ class RecipePolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Recipe $recipe): bool
+    public function update(User $user, MenuDay $menuDay): bool
     {
-        return $recipe->household_id === $user->household->id;
+        return $menuDay->household_id === $user->household->id;
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Recipe $recipe): bool
+    public function delete(User $user, MenuDay $menuDay): bool
     {
-        return $recipe->household_id === $user->household->id;
+        return $menuDay->household_id === $user->household->id;
     }
 }

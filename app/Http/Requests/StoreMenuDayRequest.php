@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Форма запроса на создание дня меню
@@ -28,7 +29,9 @@ class StoreMenuDayRequest extends FormRequest
         return [
             'day' => 'required|date|date_format:Y-m-d',
             'recipe_ids' => 'required|array',
-            'recipe_ids.*' => 'exists:recipes,id',
+            'recipe_ids.*' => [
+                Rule::exists('recipes', 'id')->where('household_id', $this->user()->household->id),
+            ],
         ];
     }
 }

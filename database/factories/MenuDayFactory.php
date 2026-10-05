@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Household;
 use App\Models\MenuDay;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -19,6 +20,7 @@ class MenuDayFactory extends Factory
     {
         return [
             'day' => $this->faker->unique()->date(),
+            'household_id' => Household::factory(),
         ];
     }
 }

@@ -9,9 +9,12 @@ use App\Models\Recipe;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\Factory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
@@ -24,9 +27,14 @@ class WeekMenuController extends Controller
      */
     public function index(Request $request)
     {
+        // берем домохоз-во текущего пользователя
+        $household = Auth::user()->household;
+        // собираем первый и последний дни недели
         [$monday, $sunday] = $this->resolveWeekRange($request);
 
-        $menuDays = MenuDay::whereBetween('day', [$monday, $sunday])
+        // получаем дни меню с рецептами для указанной недели
+        $menuDays = $household->menuDays()
+            ->whereBetween('day', [$monday, $sunday])
             ->with(['recipes' => fn ($query) => $query->withCount('products')])
             ->get()
             ->keyBy(fn ($menuDay) => $menuDay->day->format('Y-m-d'));
@@ -37,7 +45,7 @@ class WeekMenuController extends Controller
 
             if (empty($menuDays[$day->format('Y-m-d')])) {
                 $menuDays[$day->format('Y-m-d')] = (new MenuDay(['day' => $day]))
-                    ->setRelation('recipes', collect());
+                    ->setRelation('recipes', new Collection());
             }
         }
 
@@ -45,7 +53,7 @@ class WeekMenuController extends Controller
         $menuDays = $menuDays->sortKeys();
 
         // теперь надо собрать все рецепты и отфильтровать те, которых нет для определенного дня
-        $allRecipes = Recipe::all();
+        $allRecipes = $household->recipes;
         $recipeDays = [];
         foreach ($menuDays->keys() as $day) {
             $recipeDays[$day] = $allRecipes->diff($menuDays[$day]->recipes);
@@ -63,7 +71,9 @@ class WeekMenuController extends Controller
     {
         $validated = $request->validated();
 
-        $menuDay = MenuDay::firstOrCreate(['day' => $validated['day']]);
+        /** @var MenuDay $menuDay */
+        $menuDay = Auth::user()->household->menuDays()
+            ->firstOrCreate(['day' => $validated['day']]);
 
         $menuDay->recipes()->syncWithoutDetaching(
             collect($validated['recipe_ids'])
@@ -80,6 +90,8 @@ class WeekMenuController extends Controller
      */
     public function destroy(MenuDay $menuDay, Recipe $recipe)
     {
+        Gate::authorize('update', $menuDay);
+
         $menuDay->recipes()->detach($recipe);
 
         return redirect()
@@ -94,9 +106,11 @@ class WeekMenuController extends Controller
      */
     public function shoppingList(Request $request)
     {
+        $household = Auth::user()->household;
         [$monday, $sunday] = $this->resolveWeekRange($request);
 
-        $menuDays = MenuDay::whereBetween('day', [$monday, $sunday])
+        $menuDays = $household->menuDays()
+            ->whereBetween('day', [$monday, $sunday])
             ->with('recipes.products')
             ->get();
 

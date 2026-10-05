@@ -1,4 +1,6 @@
-@php use Carbon\Carbon; @endphp
+@php
+    use Carbon\Carbon;
+@endphp
 <x-layouts.app max-width="max-w-4xl">
     <x-slot:title>
         Меню на неделю
